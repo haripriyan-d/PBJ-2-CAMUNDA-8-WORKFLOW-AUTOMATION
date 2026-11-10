@@ -1,0 +1,102 @@
+[
+  {
+    "scenarioId": "LAB2-TC-01",
+    "name": "Stock Available and Payment Succeeds (Happy Path)",
+    "description": "VIP customer ordering 2 units of LAPTOP-X1 with OVERNIGHT delivery. Stock is verified (45 available). DMN sets Priority to Critical. Payment succeeds. Fulfilled.",
+    "inputVariables": {
+      "orderId": "ORD-2026-001",
+      "customerRef": "CUST-VIP-881",
+      "customerCategory": "VIP",
+      "productId": "LAPTOP-X1",
+      "quantity": 2,
+      "deliveryPreference": "OVERNIGHT",
+      "paymentToken": "tok_visa_valid",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_OrderReceived -> Task_ValidateAndCheckStock -> Gateway_StockAvailability (In Stock) -> Task_DetermineOrderPriority -> Gateway_HighValueCheck (Critical/High Value) -> Task_ManualOrderVerification [Approved] -> Task_ProcessPaymentGateway -> Gateway_PaymentOutcome (Success) -> Task_DispatchFulfilment -> EndEvent_Fulfilled",
+    "expectedDmnPriority": "Critical",
+    "expectedFinalStatus": "Order Fulfilled & Dispatched",
+    "tasklistIntervention": true,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB2-TC-02",
+    "name": "Stock Insufficient (Order Cannot Proceed)",
+    "description": "Customer ordering 10 units of GPU-SERVER. Real-time inventory indicates 0 units in stock. Gateway routes directly to cancellation notice.",
+    "inputVariables": {
+      "orderId": "ORD-2026-002",
+      "customerRef": "CUST-REG-412",
+      "customerCategory": "REGULAR",
+      "productId": "GPU-SERVER",
+      "quantity": 10,
+      "deliveryPreference": "STANDARD",
+      "paymentToken": "tok_visa_valid",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_OrderReceived -> Task_ValidateAndCheckStock -> Gateway_StockAvailability (Out of Stock) -> Task_NotifyOutOfStock -> EndEvent_OutOfStock",
+    "expectedDmnPriority": "N/A (Short-circuited at Stock Gateway)",
+    "expectedFinalStatus": "Order Cancelled - Insufficient Stock",
+    "tasklistIntervention": false,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB2-TC-03",
+    "name": "Payment Declined by Mock Service",
+    "description": "Customer ordering 1 HEADSET-PRO ($180). Stock is available. DMN sets Priority to Standard. Payment gateway responds with DECLINED (Insufficient funds).",
+    "inputVariables": {
+      "orderId": "ORD-2026-003",
+      "customerRef": "CUST-REG-905",
+      "customerCategory": "REGULAR",
+      "productId": "HEADSET-PRO",
+      "quantity": 1,
+      "deliveryPreference": "STANDARD",
+      "paymentToken": "tok_declined_nsf",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_OrderReceived -> Task_ValidateAndCheckStock -> Gateway_StockAvailability (In Stock) -> Task_DetermineOrderPriority -> Gateway_HighValueCheck (Standard) -> Task_ProcessPaymentGateway [DECLINED] -> Gateway_PaymentOutcome (Declined) -> Task_NotifyPaymentDeclined -> EndEvent_PaymentDeclined",
+    "expectedDmnPriority": "Standard",
+    "expectedFinalStatus": "Order Cancelled - Payment Declined",
+    "tasklistIntervention": false,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB2-TC-04",
+    "name": "High-Value Order Routed to Manual Review",
+    "description": "New customer ordering 3 units of WORKSTATION-ULTRA ($6,600). Order exceeds $2,000 threshold. Routed to Tasklist User Task for fraud/operations verification.",
+    "inputVariables": {
+      "orderId": "ORD-2026-004",
+      "customerRef": "CUST-NEW-109",
+      "customerCategory": "NEW",
+      "productId": "WORKSTATION-ULTRA",
+      "quantity": 3,
+      "deliveryPreference": "EXPRESS",
+      "paymentToken": "tok_visa_corporate_verified",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_OrderReceived -> Task_ValidateAndCheckStock -> Gateway_StockAvailability (In Stock) -> Task_DetermineOrderPriority (High) -> Gateway_HighValueCheck (Manual Review) -> Task_ManualOrderVerification (Tasklist) [Approved] -> Task_ProcessPaymentGateway -> Task_DispatchFulfilment -> EndEvent_Fulfilled",
+    "expectedDmnPriority": "High",
+    "expectedFinalStatus": "Order Fulfilled & Dispatched",
+    "tasklistIntervention": true,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB2-TC-05",
+    "name": "Payment Service Fails and Recovers After Corrective Action",
+    "description": "Simulates payment gateway timeout (504 Gateway Timeout) on token 'tok_gateway_timeout_simulate'. Zeebe incident raised in Operate. Operator mutates token to 'tok_visa_valid' and retries.",
+    "inputVariables": {
+      "orderId": "ORD-2026-005",
+      "customerRef": "CUST-VIP-330",
+      "customerCategory": "VIP",
+      "productId": "SMARTPHONE-12",
+      "quantity": 1,
+      "deliveryPreference": "EXPRESS",
+      "paymentToken": "tok_gateway_timeout_simulate",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_OrderReceived -> Task_ValidateAndCheckStock -> Gateway_StockAvailability -> Task_DetermineOrderPriority -> Task_ProcessPaymentGateway [INCIDENT: HTTP 504 Gateway Timeout] -> Operate Diagnostic -> Variable paymentToken mutated to 'tok_visa_valid' -> Retry Job in Operate -> Resume -> EndEvent_Fulfilled",
+    "expectedDmnPriority": "High",
+    "expectedFinalStatus": "Order Fulfilled & Dispatched (Recovered)",
+    "tasklistIntervention": false,
+    "operateIncident": true
+  }
+]

@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_EcommerceOrder"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.28.0">
+
+  <bpmn:collaboration id="Collaboration_OrderProcessing">
+    <bpmn:participant id="Participant_OrderProcessing" name="Camunda 8 E-Commerce Order Processing &amp; Fulfilment" processRef="Process_OrderProcessing" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_OrderProcessing" name="E-Commerce Order Processing and Fulfilment" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_Order">
+      <bpmn:lane id="Lane_AutomatedPipeline" name="Automated Order Services &amp; Payment Gateway">
+        <bpmn:flowNodeRef>StartEvent_OrderReceived</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ValidateAndCheckStock</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_StockAvailability</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DetermineOrderPriority</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_HighValueCheck</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ProcessPaymentGateway</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_PaymentOutcome</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DispatchFulfilment</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Fulfilled</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyPaymentDeclined</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_PaymentDeclined</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyOutOfStock</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_OutOfStock</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_OperationsReview" name="Order Operations &amp; Risk Review (Tasklist)">
+        <bpmn:flowNodeRef>Task_ManualOrderVerification</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_VerificationDecision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyVerificationCancelled</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_VerificationCancelled</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_OrderReceived" name="Customer Order Placed">
+      <bpmn:outgoing>Flow_Start_To_Stock</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Service Task 1: External Java/Spring Boot Worker -->
+    <bpmn:serviceTask id="Task_ValidateAndCheckStock" name="Validate Order &amp; Check Inventory Stock">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="order-validator-inventory" retries="3" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=orderId" target="orderId" />
+          <zeebe:input source="=productId" target="productId" />
+          <zeebe:input source="=quantity" target="quantity" />
+          <zeebe:input source="=unitPrice" target="unitPrice" />
+          <zeebe:output source="=stockAvailable" target="stockAvailable" />
+          <zeebe:output source="=availableStock" target="availableStock" />
+          <zeebe:output source="=orderTotal" target="orderTotal" />
+          <zeebe:output source="=validationStatus" target="validationStatus" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Start_To_Stock</bpmn:incoming>
+      <bpmn:outgoing>Flow_Stock_To_Gateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Exclusive Gateway: Stock Availability -->
+    <bpmn:exclusiveGateway id="Gateway_StockAvailability" name="Stock Available?" default="Flow_Stock_Yes">
+      <bpmn:incoming>Flow_Stock_To_Gateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_Stock_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Stock_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Business Rule Task: Camunda 8 DMN -->
+    <bpmn:businessRuleTask id="Task_DetermineOrderPriority" name="Determine Order Priority (DMN)">
+      <bpmn:extensionElements>
+        <zeebe:calledDecision decisionId="Decision_OrderPriority" resultVariable="priorityResult" />
+        <zeebe:ioMapping>
+          <zeebe:output source="=priorityResult.orderPriority" target="orderPriority" />
+          <zeebe:output source="=priorityResult.priorityReason" target="priorityReason" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Stock_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Priority_To_HighValueGateway</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+
+    <!-- Exclusive Gateway: High-Value or Critical Exception Check -->
+    <bpmn:exclusiveGateway id="Gateway_HighValueCheck" name="Requires Manual Verification?" default="Flow_Route_Payment_Direct">
+      <bpmn:incoming>Flow_Priority_To_HighValueGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_Route_Payment_Direct</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Route_Manual_Review</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Tasklist User Task: Manual Order Verification -->
+    <bpmn:userTask id="Task_ManualOrderVerification" name="Manual High-Value Order Verification">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formId="Form_OrderVerification" />
+        <zeebe:assignmentDefinition candidateGroups="order-operations, fraud-review" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Route_Manual_Review</bpmn:incoming>
+      <bpmn:outgoing>Flow_Review_To_VerifGateway</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Exclusive Gateway: Verification Decision -->
+    <bpmn:exclusiveGateway id="Gateway_VerificationDecision" name="Verification Approved?" default="Flow_Verif_Reject">
+      <bpmn:incoming>Flow_Review_To_VerifGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_Verif_Approve</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Verif_Reject</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Service Task 2: REST Connector calling Payment Gateway -->
+    <bpmn:serviceTask id="Task_ProcessPaymentGateway" name="Invoke Payment Gateway REST Connector">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3" />
+        <zeebe:ioMapping>
+          <zeebe:input source="POST" target="method" />
+          <zeebe:input source="http://localhost:8081/api/v1/payments/process" target="url" />
+          <zeebe:input source="={orderId: orderId, customerRef: customerRef, amount: orderTotal, paymentToken: paymentToken}" target="body" />
+          <zeebe:output source="=response.body.paymentStatus" target="paymentStatus" />
+          <zeebe:output source="=response.body.transactionId" target="transactionId" />
+          <zeebe:output source="=response.body.authCode" target="authCode" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Route_Payment_Direct</bpmn:incoming>
+      <bpmn:incoming>Flow_Verif_Approve</bpmn:incoming>
+      <bpmn:outgoing>Flow_Payment_To_Gateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Exclusive Gateway: Payment Outcome -->
+    <bpmn:exclusiveGateway id="Gateway_PaymentOutcome" name="Payment Status Successful?" default="Flow_Payment_Failed">
+      <bpmn:incoming>Flow_Payment_To_Gateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_Payment_Success</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Payment_Failed</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Fulfilment Path -->
+    <bpmn:serviceTask id="Task_DispatchFulfilment" name="Dispatch Order to Warehouse Fulfilment">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="fulfilment-dispatcher" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Payment_Success</bpmn:incoming>
+      <bpmn:outgoing>Flow_Dispatch_To_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_Fulfilled" name="Order Fulfilled &amp; Dispatched">
+      <bpmn:incoming>Flow_Dispatch_To_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Payment Decline Path -->
+    <bpmn:sendTask id="Task_NotifyPaymentDeclined" name="Notify Customer Payment Declined">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notification-service" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Payment_Failed</bpmn:incoming>
+      <bpmn:outgoing>Flow_PayFail_To_End</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="EndEvent_PaymentDeclined" name="Order Cancelled - Payment Declined">
+      <bpmn:incoming>Flow_PayFail_To_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Out of Stock Path -->
+    <bpmn:sendTask id="Task_NotifyOutOfStock" name="Notify Customer Stock Unavailable">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notification-service" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Stock_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_StockNo_To_End</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="EndEvent_OutOfStock" name="Order Cancelled - Insufficient Stock">
+      <bpmn:incoming>Flow_StockNo_To_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Verification Cancelled Path -->
+    <bpmn:sendTask id="Task_NotifyVerificationCancelled" name="Notify Customer Order Flagged &amp; Cancelled">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notification-service" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Verif_Reject</bpmn:incoming>
+      <bpmn:outgoing>Flow_VerifCancel_To_End</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="EndEvent_VerificationCancelled" name="Order Cancelled - Review Rejection">
+      <bpmn:incoming>Flow_VerifCancel_To_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_Start_To_Stock" sourceRef="StartEvent_OrderReceived" targetRef="Task_ValidateAndCheckStock" />
+    <bpmn:sequenceFlow id="Flow_Stock_To_Gateway" sourceRef="Task_ValidateAndCheckStock" targetRef="Gateway_StockAvailability" />
+    <bpmn:sequenceFlow id="Flow_Stock_Yes" name="In Stock" sourceRef="Gateway_StockAvailability" targetRef="Task_DetermineOrderPriority" />
+    <bpmn:sequenceFlow id="Flow_Stock_No" name="Out of Stock" sourceRef="Gateway_StockAvailability" targetRef="Task_NotifyOutOfStock">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=stockAvailable = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_StockNo_To_End" sourceRef="Task_NotifyOutOfStock" targetRef="EndEvent_OutOfStock" />
+    <bpmn:sequenceFlow id="Flow_Priority_To_HighValueGateway" sourceRef="Task_DetermineOrderPriority" targetRef="Gateway_HighValueCheck" />
+    <bpmn:sequenceFlow id="Flow_Route_Payment_Direct" name="Standard Value" sourceRef="Gateway_HighValueCheck" targetRef="Task_ProcessPaymentGateway" />
+    <bpmn:sequenceFlow id="Flow_Route_Manual_Review" name="High Value / Critical" sourceRef="Gateway_HighValueCheck" targetRef="Task_ManualOrderVerification">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=orderTotal &gt;= 2000 or orderPriority = "Critical"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Review_To_VerifGateway" sourceRef="Task_ManualOrderVerification" targetRef="Gateway_VerificationDecision" />
+    <bpmn:sequenceFlow id="Flow_Verif_Approve" name="Approve" sourceRef="Gateway_VerificationDecision" targetRef="Task_ProcessPaymentGateway">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=verificationStatus = "Approved"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Verif_Reject" name="Reject" sourceRef="Gateway_VerificationDecision" targetRef="Task_NotifyVerificationCancelled" />
+    <bpmn:sequenceFlow id="Flow_VerifCancel_To_End" sourceRef="Task_NotifyVerificationCancelled" targetRef="EndEvent_VerificationCancelled" />
+    <bpmn:sequenceFlow id="Flow_Payment_To_Gateway" sourceRef="Task_ProcessPaymentGateway" targetRef="Gateway_PaymentOutcome" />
+    <bpmn:sequenceFlow id="Flow_Payment_Success" name="Payment Success" sourceRef="Gateway_PaymentOutcome" targetRef="Task_DispatchFulfilment">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=paymentStatus = "SUCCESS"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Payment_Failed" name="Declined" sourceRef="Gateway_PaymentOutcome" targetRef="Task_NotifyPaymentDeclined" />
+    <bpmn:sequenceFlow id="Flow_PayFail_To_End" sourceRef="Task_NotifyPaymentDeclined" targetRef="EndEvent_PaymentDeclined" />
+    <bpmn:sequenceFlow id="Flow_Dispatch_To_End" sourceRef="Task_DispatchFulfilment" targetRef="EndEvent_Fulfilled" />
+
+  </bpmn:process>
+
+  <!-- BPMNDI Layout Coordinates -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Order">
+    <bpmndi:BPMNPlane id="BPMNPlane_Order" bpmnElement="Collaboration_OrderProcessing">
+      <bpmndi:BPMNShape id="Shape_Participant_OrderProcessing" bpmnElement="Participant_OrderProcessing" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1440" height="490" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Lane_AutomatedPipeline" bpmnElement="Lane_AutomatedPipeline" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1410" height="280" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Lane_OperationsReview" bpmnElement="Lane_OperationsReview" isHorizontal="true">
+        <dc:Bounds x="190" y="360" width="1410" height="210" />
+      </bpmndi:BPMNShape>
+
+      <!-- Nodes -->
+      <bpmndi:BPMNShape id="Shape_StartEvent_OrderReceived" bpmnElement="StartEvent_OrderReceived">
+        <dc:Bounds x="232" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="210" y="205" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_ValidateAndCheckStock" bpmnElement="Task_ValidateAndCheckStock">
+        <dc:Bounds x="320" y="140" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Gateway_StockAvailability" bpmnElement="Gateway_StockAvailability" isMarkerVisible="true">
+        <dc:Bounds x="495" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="480" y="125" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_DetermineOrderPriority" bpmnElement="Task_DetermineOrderPriority">
+        <dc:Bounds x="590" y="140" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Gateway_HighValueCheck" bpmnElement="Gateway_HighValueCheck" isMarkerVisible="true">
+        <dc:Bounds x="765" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="748" y="120" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_ManualOrderVerification" bpmnElement="Task_ManualOrderVerification">
+        <dc:Bounds x="725" y="420" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Gateway_VerificationDecision" bpmnElement="Gateway_VerificationDecision" isMarkerVisible="true">
+        <dc:Bounds x="905" y="435" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="901" y="492" width="58" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_NotifyVerificationCancelled" bpmnElement="Task_NotifyVerificationCancelled">
+        <dc:Bounds x="1010" y="420" width="120" height="70" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_VerificationCancelled" bpmnElement="EndEvent_VerificationCancelled">
+        <dc:Bounds x="1182" y="437" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1160" y="480" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_ProcessPaymentGateway" bpmnElement="Task_ProcessPaymentGateway">
+        <dc:Bounds x="900" y="140" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Gateway_PaymentOutcome" bpmnElement="Gateway_PaymentOutcome" isMarkerVisible="true">
+        <dc:Bounds x="1075" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1060" y="120" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_DispatchFulfilment" bpmnElement="Task_DispatchFulfilment">
+        <dc:Bounds x="1180" y="110" width="130" height="70" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_Fulfilled" bpmnElement="EndEvent_Fulfilled">
+        <dc:Bounds x="1362" y="127" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1345" y="170" width="71" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_NotifyPaymentDeclined" bpmnElement="Task_NotifyPaymentDeclined">
+        <dc:Bounds x="1180" y="210" width="130" height="70" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_PaymentDeclined" bpmnElement="EndEvent_PaymentDeclined">
+        <dc:Bounds x="1362" y="227" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1340" y="270" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_NotifyOutOfStock" bpmnElement="Task_NotifyOutOfStock">
+        <dc:Bounds x="460" y="260" width="120" height="60" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_OutOfStock" bpmnElement="EndEvent_OutOfStock">
+        <dc:Bounds x="632" y="272" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="611" y="315" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="Edge_Flow_Start_To_Stock" bpmnElement="Flow_Start_To_Stock">
+        <di:waypoint x="268" y="180" />
+        <di:waypoint x="320" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Stock_To_Gateway" bpmnElement="Flow_Stock_To_Gateway">
+        <di:waypoint x="450" y="180" />
+        <di:waypoint x="495" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Stock_Yes" bpmnElement="Flow_Stock_Yes">
+        <di:waypoint x="545" y="180" />
+        <di:waypoint x="590" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Stock_No" bpmnElement="Flow_Stock_No">
+        <di:waypoint x="520" y="205" />
+        <di:waypoint x="520" y="260" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_StockNo_To_End" bpmnElement="Flow_StockNo_To_End">
+        <di:waypoint x="580" y="290" />
+        <di:waypoint x="632" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Priority_To_HighValueGateway" bpmnElement="Flow_Priority_To_HighValueGateway">
+        <di:waypoint x="720" y="180" />
+        <di:waypoint x="765" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Route_Payment_Direct" bpmnElement="Flow_Route_Payment_Direct">
+        <di:waypoint x="815" y="180" />
+        <di:waypoint x="900" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Route_Manual_Review" bpmnElement="Flow_Route_Manual_Review">
+        <di:waypoint x="790" y="205" />
+        <di:waypoint x="790" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Review_To_VerifGateway" bpmnElement="Flow_Review_To_VerifGateway">
+        <di:waypoint x="855" y="460" />
+        <di:waypoint x="905" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Verif_Approve" bpmnElement="Flow_Verif_Approve">
+        <di:waypoint x="930" y="435" />
+        <di:waypoint x="930" y="328" />
+        <di:waypoint x="930" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Verif_Reject" bpmnElement="Flow_Verif_Reject">
+        <di:waypoint x="955" y="460" />
+        <di:waypoint x="1010" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_VerifCancel_To_End" bpmnElement="Flow_VerifCancel_To_End">
+        <di:waypoint x="1130" y="455" />
+        <di:waypoint x="1182" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Payment_To_Gateway" bpmnElement="Flow_Payment_To_Gateway">
+        <di:waypoint x="1030" y="180" />
+        <di:waypoint x="1075" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Payment_Success" bpmnElement="Flow_Payment_Success">
+        <di:waypoint x="1100" y="155" />
+        <di:waypoint x="1100" y="145" />
+        <di:waypoint x="1180" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Payment_Failed" bpmnElement="Flow_Payment_Failed">
+        <di:waypoint x="1100" y="205" />
+        <di:waypoint x="1100" y="245" />
+        <di:waypoint x="1180" y="245" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_PayFail_To_End" bpmnElement="Flow_PayFail_To_End">
+        <di:waypoint x="1310" y="245" />
+        <di:waypoint x="1362" y="245" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Dispatch_To_End" bpmnElement="Flow_Dispatch_To_End">
+        <di:waypoint x="1310" y="145" />
+        <di:waypoint x="1362" y="145" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

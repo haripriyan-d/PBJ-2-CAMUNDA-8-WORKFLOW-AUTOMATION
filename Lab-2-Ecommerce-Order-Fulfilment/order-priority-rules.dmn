@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="Definitions_OrderPriorityRules"
+             name="Order Priority Decision Rules"
+             namespace="http://camunda.org/schema/1.0/dmn"
+             exporter="Camunda Modeler"
+             exporterVersion="5.28.0">
+
+  <decision id="Decision_OrderPriority" name="Order Fulfilment Priority Determination">
+    <decisionTable id="DecisionTable_Priority" hitPolicy="FIRST">
+      <input id="Input_OrderValue" label="Order Value ($)">
+        <inputExpression id="InputExpr_OrderValue" typeRef="number">
+          <text>orderTotal</text>
+        </inputExpression>
+      </input>
+      <input id="Input_CustomerCategory" label="Customer Category">
+        <inputExpression id="InputExpr_CustomerCategory" typeRef="string">
+          <text>customerCategory</text>
+        </inputExpression>
+      </input>
+      <input id="Input_DeliveryPreference" label="Delivery Preference">
+        <inputExpression id="InputExpr_DeliveryPreference" typeRef="string">
+          <text>deliveryPreference</text>
+        </inputExpression>
+      </input>
+      <output id="Output_OrderPriority" label="Order Priority" name="orderPriority" typeRef="string" />
+      <output id="Output_PriorityReason" label="Classification Reason" name="priorityReason" typeRef="string" />
+
+      <!-- Rule 1: VIP with Overnight Delivery -> Critical -->
+      <rule id="Rule_VipOvernight">
+        <inputEntry id="Entry_P1_1"><text>-</text></inputEntry>
+        <inputEntry id="Entry_P1_2"><text>"VIP"</text></inputEntry>
+        <inputEntry id="Entry_P1_3"><text>"OVERNIGHT"</text></inputEntry>
+        <outputEntry id="Out_P1_1"><text>"Critical"</text></outputEntry>
+        <outputEntry id="Out_P1_2"><text>"VIP customer with guaranteed overnight delivery SLA"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 2: High Value Order (>= 2000) -> High -->
+      <rule id="Rule_HighValue">
+        <inputEntry id="Entry_P2_1"><text>&gt;= 2000</text></inputEntry>
+        <inputEntry id="Entry_P2_2"><text>-</text></inputEntry>
+        <inputEntry id="Entry_P2_3"><text>-</text></inputEntry>
+        <outputEntry id="Out_P2_1"><text>"High"</text></outputEntry>
+        <outputEntry id="Out_P2_2"><text>"High-value order exceeding enterprise priority threshold"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 3: VIP Customer with any other delivery -> High -->
+      <rule id="Rule_VipStandard">
+        <inputEntry id="Entry_P3_1"><text>-</text></inputEntry>
+        <inputEntry id="Entry_P3_2"><text>"VIP"</text></inputEntry>
+        <inputEntry id="Entry_P3_3"><text>-</text></inputEntry>
+        <outputEntry id="Out_P3_1"><text>"High"</text></outputEntry>
+        <outputEntry id="Out_P3_2"><text>"VIP tier loyalty preference"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 4: Regular Customer with Express/Overnight -> Medium -->
+      <rule id="Rule_RegularExpress">
+        <inputEntry id="Entry_P4_1"><text>-</text></inputEntry>
+        <inputEntry id="Entry_P4_2"><text>"REGULAR"</text></inputEntry>
+        <inputEntry id="Entry_P4_3"><text>"EXPRESS", "OVERNIGHT"</text></inputEntry>
+        <outputEntry id="Out_P4_1"><text>"Medium"</text></outputEntry>
+        <outputEntry id="Out_P4_2"><text>"Paid expedited shipping tier"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 5: Fallthrough Catch-all -> Standard -->
+      <rule id="Rule_StandardCatchall">
+        <inputEntry id="Entry_P5_1"><text>-</text></inputEntry>
+        <inputEntry id="Entry_P5_2"><text>-</text></inputEntry>
+        <inputEntry id="Entry_P5_3"><text>-</text></inputEntry>
+        <outputEntry id="Out_P5_1"><text>"Standard"</text></outputEntry>
+        <outputEntry id="Out_P5_2"><text>"Standard fulfillment queue"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_Priority">
+      <dmndi:DMNShape id="DMNShape_Decision_OrderPriority" dmnElementRef="Decision_OrderPriority">
+        <dc:Bounds x="160" y="100" width="220" height="80" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

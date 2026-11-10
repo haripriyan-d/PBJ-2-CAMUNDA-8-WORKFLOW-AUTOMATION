@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="Definitions_LoanRules"
+             name="Loan Approval Decision Rules"
+             namespace="http://camunda.org/schema/1.0/dmn"
+             exporter="Camunda Modeler"
+             exporterVersion="5.28.0">
+
+  <decision id="Decision_LoanEligibility" name="Loan Eligibility &amp; Risk Classification">
+    <decisionTable id="DecisionTable_Loan" hitPolicy="FIRST">
+      <input id="Input_CreditScore" label="Credit Score">
+        <inputExpression id="InputExpr_CreditScore" typeRef="number">
+          <text>creditScore</text>
+        </inputExpression>
+      </input>
+      <input id="Input_DtiRatio" label="Debt to Income Ratio (%)">
+        <inputExpression id="InputExpr_DtiRatio" typeRef="number">
+          <text>debtToIncomeRatio</text>
+        </inputExpression>
+      </input>
+      <input id="Input_MonthlyIncome" label="Monthly Income ($)">
+        <inputExpression id="InputExpr_MonthlyIncome" typeRef="number">
+          <text>monthlyIncome</text>
+        </inputExpression>
+      </input>
+      <output id="Output_Decision" label="Classification Decision" name="decision" typeRef="string" />
+      <output id="Output_Reason" label="Underwriting Reason" name="reason" typeRef="string" />
+
+      <!-- Rule 1: High credit score, low DTI, sufficient income -> Approved -->
+      <rule id="Rule_PrimeApproval">
+        <inputEntry id="Entry_1_1"><text>&gt;= 740</text></inputEntry>
+        <inputEntry id="Entry_1_2"><text>&lt;= 35</text></inputEntry>
+        <inputEntry id="Entry_1_3"><text>&gt;= 3500</text></inputEntry>
+        <outputEntry id="Out_1_1"><text>"Approved"</text></outputEntry>
+        <outputEntry id="Out_1_2"><text>"Prime applicant: High credit score and healthy debt-to-income ratio"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 2: Subprime credit score -> Rejected -->
+      <rule id="Rule_LowCreditReject">
+        <inputEntry id="Entry_2_1"><text>&lt; 600</text></inputEntry>
+        <inputEntry id="Entry_2_2"><text>-</text></inputEntry>
+        <inputEntry id="Entry_2_3"><text>-</text></inputEntry>
+        <outputEntry id="Out_2_1"><text>"Rejected"</text></outputEntry>
+        <outputEntry id="Out_2_2"><text>"Credit score below minimum lending threshold (600)"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 3: Excessive DTI ratio -> Rejected -->
+      <rule id="Rule_HighDtiReject">
+        <inputEntry id="Entry_3_1"><text>-</text></inputEntry>
+        <inputEntry id="Entry_3_2"><text>&gt; 50</text></inputEntry>
+        <inputEntry id="Entry_3_3"><text>-</text></inputEntry>
+        <outputEntry id="Out_3_1"><text>"Rejected"</text></outputEntry>
+        <outputEntry id="Out_3_2"><text>"Debt-to-income ratio exceeds statutory maximum threshold (50%)"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 4: Insufficient monthly income -> Rejected -->
+      <rule id="Rule_LowIncomeReject">
+        <inputEntry id="Entry_4_1"><text>-</text></inputEntry>
+        <inputEntry id="Entry_4_2"><text>-</text></inputEntry>
+        <inputEntry id="Entry_4_3"><text>&lt; 2000</text></inputEntry>
+        <outputEntry id="Out_4_1"><text>"Rejected"</text></outputEntry>
+        <outputEntry id="Out_4_2"><text>"Monthly verifiable income below minimum qualification bar ($2,000)"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 5: Moderate credit and moderate DTI -> Manual Review -->
+      <rule id="Rule_ModerateReview">
+        <inputEntry id="Entry_5_1"><text>[600..739]</text></inputEntry>
+        <inputEntry id="Entry_5_2"><text>&lt;= 45</text></inputEntry>
+        <inputEntry id="Entry_5_3"><text>&gt;= 2500</text></inputEntry>
+        <outputEntry id="Out_5_1"><text>"Manual Review"</text></outputEntry>
+        <outputEntry id="Out_5_2"><text>"Borderline risk parameters require human underwriter discretionary assessment"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 6: Fallthrough catch-all -> Manual Review -->
+      <rule id="Rule_FallbackReview">
+        <inputEntry id="Entry_6_1"><text>-</text></inputEntry>
+        <inputEntry id="Entry_6_2"><text>-</text></inputEntry>
+        <inputEntry id="Entry_6_3"><text>-</text></inputEntry>
+        <outputEntry id="Out_6_1"><text>"Manual Review"</text></outputEntry>
+        <outputEntry id="Out_6_2"><text>"Non-standard risk tier requires underwriter policy override"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_Loan">
+      <dmndi:DMNShape id="DMNShape_Decision_LoanEligibility" dmnElementRef="Decision_LoanEligibility">
+        <dc:Bounds x="160" y="100" width="220" height="80" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

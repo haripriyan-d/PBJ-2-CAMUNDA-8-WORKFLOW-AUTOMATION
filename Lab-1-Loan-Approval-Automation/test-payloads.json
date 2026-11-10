@@ -1,0 +1,97 @@
+[
+  {
+    "scenarioId": "LAB1-TC-01",
+    "name": "Application Meeting Approval Criteria (Happy Path)",
+    "description": "Applicant with high income ($7,500), excellent credit score (785), and conservative requested amount ($15,000). DTI evaluates to 6.0%. DMN evaluates to Approved.",
+    "inputVariables": {
+      "applicantId": "APP-001",
+      "applicantName": "Alexander Wright",
+      "requestedAmount": 15000,
+      "monthlyIncome": 7500,
+      "employmentYears": 6,
+      "email": "alex.wright@corporate.example.com",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_LoanApplied -> Task_ValidateApplicant -> Gateway_Validation (Valid) -> Task_CreditAssessment -> Task_EvaluateLoanDmn -> Gateway_DmnOutcome (Approved) -> Task_PrepareDisbursement -> Task_NotifyApproved -> EndEvent_Approved",
+    "expectedDmnDecision": "Approved",
+    "expectedFinalStatus": "Loan Sanctioned & Disbursed",
+    "tasklistIntervention": false,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB1-TC-02",
+    "name": "Application Failing Eligibility Criteria (Adverse Action)",
+    "description": "Applicant with low income ($1,800), high requested loan ($45,000), resulting in extreme DTI (>70%) and poor credit score (540). DMN evaluates to Rejected.",
+    "inputVariables": {
+      "applicantId": "APP-002",
+      "applicantName": "Marcus Vance",
+      "requestedAmount": 45000,
+      "monthlyIncome": 1800,
+      "employmentYears": 1,
+      "email": "marcus.vance@synthetic.example.com",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_LoanApplied -> Task_ValidateApplicant -> Gateway_Validation (Valid) -> Task_CreditAssessment -> Task_EvaluateLoanDmn -> Gateway_DmnOutcome (Rejected) -> Task_NotifyRejected -> EndEvent_Rejected",
+    "expectedDmnDecision": "Rejected",
+    "expectedFinalStatus": "Loan Rejected",
+    "tasklistIntervention": false,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB1-TC-03",
+    "name": "Application Requiring Manual Review (Tasklist User Task)",
+    "description": "Applicant with moderate income ($4,500), requested amount ($22,000), fair credit score (675), and borderline DTI (38.8%). DMN evaluates to Manual Review.",
+    "inputVariables": {
+      "applicantId": "APP-003",
+      "applicantName": "Alice Walker",
+      "requestedAmount": 22000,
+      "monthlyIncome": 4500,
+      "employmentYears": 3,
+      "email": "alice.walker@synthetic.example.com",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_LoanApplied -> Task_ValidateApplicant -> Gateway_Validation (Valid) -> Task_CreditAssessment -> Task_EvaluateLoanDmn -> Gateway_DmnOutcome (Manual Review) -> Task_ManualUnderwriterReview (Tasklist) -> Gateway_UnderwriterDecision (Approved) -> Task_PrepareDisbursement -> Task_NotifyApproved -> EndEvent_Approved",
+    "expectedDmnDecision": "Manual Review",
+    "expectedFinalStatus": "Loan Sanctioned & Disbursed",
+    "tasklistIntervention": true,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB1-TC-04",
+    "name": "Credit Assessment API Error / Outage Handling",
+    "description": "Simulates external credit bureau downtime returning HTTP 503 Service Unavailable. Triggered via applicantId 'SIMULATE_ERROR'.",
+    "inputVariables": {
+      "applicantId": "SIMULATE_ERROR",
+      "applicantName": "Robert Chen",
+      "requestedAmount": 12000,
+      "monthlyIncome": 5000,
+      "employmentYears": 4,
+      "email": "robert.chen@synthetic.example.com",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_LoanApplied -> Task_ValidateApplicant -> Gateway_Validation (Valid) -> Task_CreditAssessment [HTTP 503 / Zeebe Incident] -> Incident Resolved -> Complete",
+    "expectedDmnDecision": "N/A (Pre-DMN Gateway Incident)",
+    "expectedFinalStatus": "Incident Diagnosed & Resolved in Operate",
+    "tasklistIntervention": false,
+    "operateIncident": true
+  },
+  {
+    "scenarioId": "LAB1-TC-05",
+    "name": "Worker Failure Followed by Correction and Recovery",
+    "description": "Applicant with invalid monthlyIncome (-500) and simulateWorkerFailure flag enabled. Worker raises IllegalArgumentException. Operator edits variable to $4,800 in Operate and retries job.",
+    "inputVariables": {
+      "applicantId": "APP-005",
+      "applicantName": "Elena Rostova",
+      "requestedAmount": 18000,
+      "monthlyIncome": -500,
+      "employmentYears": 2,
+      "email": "elena.rostova@synthetic.example.com",
+      "simulateWorkerFailure": true
+    },
+    "expectedRoute": "StartEvent_LoanApplied -> Task_ValidateApplicant [INCIDENT: IllegalArgumentException] -> Operate Diagnostic -> Variable Modified to monthlyIncome=4800, simulateWorkerFailure=false -> Retry Job in Operate -> Resume to Completion",
+    "expectedDmnDecision": "Manual Review -> Approved",
+    "expectedFinalStatus": "Loan Sanctioned & Disbursed (Recovered)",
+    "tasklistIntervention": true,
+    "operateIncident": true
+  }
+]

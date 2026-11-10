@@ -1,0 +1,35 @@
+server:
+  port: 8081
+  error:
+    include-message: always
+    include-binding-errors: always
+
+spring:
+  application:
+    name: camunda8-workflow-workers
+
+# Zeebe Client Configuration for Camunda 8 Self-Managed or SaaS
+zeebe:
+  client:
+    broker:
+      gateway-address: 127.0.0.1:26500
+    security:
+      plaintext: true
+    worker:
+      max-jobs-active: 32
+      threads: 8
+      default-name: camunda8-pbj2-worker
+
+# Camunda 8 Client Configuration
+camunda:
+  client:
+    mode: simple
+    zeebe:
+      enabled: false # Set to true when connected to live Zeebe cluster
+      gateway-url: 127.0.0.1:26500
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

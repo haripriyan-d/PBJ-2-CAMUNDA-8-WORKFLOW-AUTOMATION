@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camunda 8 Workflow Automation Platform - Labs 1, 2 & 3</title>
+  <!-- BPMN.js & DMN.js Viewers -->
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/diagram-js.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/bpmn-font/css/bpmn.css" />
+  <link rel="stylesheet" href="https://unpkg.com/dmn-js@14.0.0/dist/assets/dmn-js-decision-table.css" />
+  <link rel="stylesheet" href="https://unpkg.com/dmn-js@14.0.0/dist/assets/dmn-font/css/dmn.css" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    :root {
+      --bg-dark: #0b1120;
+      --bg-card: #1e293b;
+      --bg-panel: #0f172a;
+      --border-color: #334155;
+      --camunda-orange: #ff7a00;
+      --camunda-red: #ff3366;
+      --operate-blue: #0284c7;
+      --tasklist-teal: #0d9488;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* TOP HEADER */
+    header {
+      background: #0f172a;
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-pill {
+      background: linear-gradient(135deg, var(--camunda-orange), var(--camunda-red));
+      color: #fff;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-title h1 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .header-title p {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* LAB PICKER & VIEW TABS */
+    .lab-selector {
+      display: flex;
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 3px;
+      border: 1px solid var(--border-color);
+      gap: 4px;
+    }
+    .lab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .lab-btn.active {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .view-tabs {
+      display: flex;
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 3px;
+      border: 1px solid var(--border-color);
+      gap: 4px;
+    }
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .view-btn.active {
+      background: #334155;
+      color: #fff;
+    }
+    .view-btn.active.operate { background: #0284c7; }
+    .view-btn.active.tasklist { background: #0d9488; }
+    .view-btn.active.workers { background: #475569; }
+
+    /* MAIN CONTAINER */
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* WORKSPACE CONTENT PANELS */
+    .view-panel {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0;
+    }
+    .view-panel.active {
+      display: flex;
+    }
+
+    /* MODELER VIEW */
+    #modeler-view {
+      flex-direction: row;
+      background: #f8fafc;
+    }
+    #canvas-bpmn {
+      flex: 1;
+      height: 100%;
+      background: #ffffff;
+      position: relative;
+    }
+    #canvas-dmn {
+      display: none;
+      flex: 1;
+      height: 100%;
+      background: #ffffff;
+      overflow: auto;
+      padding: 20px;
+    }
+    .modeler-sidebar {
+      width: 320px;
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 16px;
+      overflow-y: auto;
+      color: var(--text-main);
+    }
+    .modeler-subtab {
+      display: flex;
+      background: var(--bg-card);
+      padding: 4px;
+      border-radius: 6px;
+      gap: 4px;
+    }
+    .subtab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .subtab-btn.active {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    /* OPERATE VIEW */
+    #operate-view {
+      flex-direction: column;
+      background: #090d16;
+    }
+    .operate-header {
+      background: #0d1526;
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .operate-instances-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.82rem;
+    }
+    .status-tag {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .status-tag.active { background: #0369a1; color: #bae6fd; }
+    .status-tag.completed { background: #065f46; color: #a7f3d0; }
+    .status-tag.incident { background: #991b1b; color: #fecaca; }
+
+    .operate-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    .operate-canvas-wrapper {
+      flex: 1;
+      background: #ffffff;
+      position: relative;
+    }
+    .operate-inspector {
+      width: 440px;
+      background: #0f172a;
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .inspector-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111e38;
+    }
+    .incident-alert-box {
+      margin: 14px;
+      padding: 12px;
+      background: #450a0a;
+      border: 1px solid #dc2626;
+      border-radius: 8px;
+    }
+    .incident-alert-box h4 {
+      color: #f87171;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .incident-alert-box p {
+      font-size: 0.74rem;
+      color: #fca5a5;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 10px;
+    }
+    .btn-retry-incident {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-retry-incident:hover { background: #b91c1c; }
+
+    .variables-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+    .variables-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: #1e293b;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .variables-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e293b;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .variables-table tr:hover {
+      background: #1e293b;
+    }
+
+    /* TASKLIST VIEW */
+    #tasklist-view {
+      flex-direction: row;
+      background: #0f172a;
+    }
+    .tasklist-inbox {
+      width: 380px;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      background: #090e1a;
+    }
+    .inbox-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .task-item {
+      padding: 14px 18px;
+      border-bottom: 1px solid #1e293b;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .task-item:hover, .task-item.active {
+      background: #1e293b;
+    }
+    .task-item-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .task-item-meta {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .tasklist-form-area {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+    }
+    .form-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 650px;
+      padding: 24px;
+    }
+    .form-header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .form-field {
+      margin-bottom: 16px;
+    }
+    .form-field label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .form-field input, .form-field select, .form-field textarea {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 0.82rem;
+      font-family: inherit;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 16px;
+    }
+    .btn-approve {
+      background: #10b981;
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .btn-reject {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    /* WORKER LOGS VIEW */
+    #worker-view {
+      flex-direction: column;
+      background: #090d16;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .terminal-box {
+      flex: 1;
+      background: #030712;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-y: auto;
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+    .log-line {
+      margin-bottom: 4px;
+    }
+    .log-info { color: #38bdf8; }
+    .log-warn { color: #facc15; }
+    .log-error { color: #f87171; }
+    .log-success { color: #4ade80; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <div class="brand-pill">
+        <i class="fa-solid fa-diagram-project"></i> Camunda 8
+      </div>
+      <div class="header-title">
+        <h1 id="app-title">PBJ-2 Practical Assignment: Camunda 8 End-to-End Workflow Platform</h1>
+        <p id="app-subtitle">Labs 1–3: Process Automation, DMN Decisions, Spring Boot External Workers &amp; Monitoring</p>
+      </div>
+    </div>
+
+    <!-- LAB SELECTOR -->
+    <div class="lab-selector">
+      <button class="lab-btn active" onclick="switchLab('lab1')">Lab 1: Loan Approval</button>
+      <button class="lab-btn" onclick="switchLab('lab2')">Lab 2: E-Commerce Fulfilment</button>
+      <button class="lab-btn" onclick="switchLab('lab3')">Lab 3: Hospital Triage</button>
+    </div>
+
+    <!-- VIEW TABS -->
+    <div class="view-tabs">
+      <button class="view-btn active" onclick="switchView('modeler')"><i class="fa-solid fa-pen-ruler"></i> Modeler</button>
+      <button class="view-btn operate" onclick="switchView('operate')"><i class="fa-solid fa-chart-line"></i> Operate</button>
+      <button class="view-btn tasklist" onclick="switchView('tasklist')"><i class="fa-solid fa-list-check"></i> Tasklist</button>
+      <button class="view-btn workers" onclick="switchView('workers')"><i class="fa-solid fa-terminal"></i> Workers</button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main>
+    <!-- VIEW 1: CAMUNDA MODELER (BPMN / DMN) -->
+    <div id="modeler-view" class="view-panel active">
+      <div id="canvas-bpmn"></div>
+      <div id="canvas-dmn"></div>
+      <div class="modeler-sidebar">
+        <div class="modeler-subtab">
+          <button id="btn-subtab-bpmn" class="subtab-btn active" onclick="showModelerTab('bpmn')">BPMN 2.0 Process</button>
+          <button id="btn-subtab-dmn" class="subtab-btn" onclick="showModelerTab('dmn')">DMN 1.3 Rules</button>
+        </div>
+        <div id="modeler-details">
+          <h3 id="model-details-title" style="font-size:0.9rem; margin-bottom:8px; color:#fff;">Loan Approval Model</h3>
+          <p id="model-details-desc" style="font-size:0.75rem; color:var(--text-muted); line-height:1.5;">
+            Camunda 8 BPMN process combining straight-through processing, external Spring Boot workers, DMN decisioning, and credit underwriter Tasklist user tasks.
+          </p>
+        </div>
+        <div style="margin-top:auto;">
+          <h4 style="font-size:0.78rem; margin-bottom:6px; color:#fff;">Execution Metadata</h4>
+          <p style="font-size:0.72rem; color:var(--text-muted); font-family:'JetBrains Mono';">Engine: Zeebe 8.5.3</p>
+          <p style="font-size:0.72rem; color:var(--text-muted); font-family:'JetBrains Mono';">Tenant: &lt;default&gt;</p>
+          <p style="font-size:0.72rem; color:var(--text-muted); font-family:'JetBrains Mono';">State: Deployed &amp; Executable</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: CAMUNDA OPERATE -->
+    <div id="operate-view" class="view-panel">
+      <div class="operate-header">
+        <div class="operate-instances-strip">
+          <strong style="color:#fff;">Process Instance:</strong>
+          <span id="operate-instance-id" style="font-family:'JetBrains Mono'; color:#38bdf8;">#2251799813685249</span>
+          <span id="operate-status-badge" class="status-tag active">ACTIVE</span>
+          <span style="color:var(--text-muted); font-size:0.75rem;">Started 2 mins ago by REST Trigger</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="lab-btn" style="background:#1e293b; color:#fff;" onclick="toggleOperateIncident()">Simulate Incident / Recover</button>
+        </div>
+      </div>
+      <div class="operate-body">
+        <div class="operate-canvas-wrapper" id="canvas-operate-bpmn"></div>
+        <div class="operate-inspector">
+          <div class="inspector-header">
+            <span><i class="fa-solid fa-sliders"></i> Process Variables &amp; State</span>
+            <span style="font-size:0.72rem; color:var(--text-muted);">Instance #22517998</span>
+          </div>
+
+          <!-- INCIDENT ALERT BOX -->
+          <div id="operate-incident-box" class="incident-alert-box" style="display:none;">
+            <h4><i class="fa-solid fa-triangle-exclamation"></i> Incident Detected (JOB_NO_RETRIES)</h4>
+            <p id="operate-incident-msg">IllegalArgumentException: Worker Validation Fault: Monthly income cannot be negative (-$500).</p>
+            <button class="btn-retry-incident" onclick="resolveOperateIncident()"><i class="fa-solid fa-rotate-right"></i> Mutate Variable &amp; Retry Incident</button>
+          </div>
+
+          <!-- VARIABLES TABLE -->
+          <div style="flex:1; overflow-y:auto;">
+            <table class="variables-table">
+              <thead>
+                <tr><th>Variable</th><th>Value</th></tr>
+              </thead>
+              <tbody id="operate-variables-tbody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: CAMUNDA TASKLIST -->
+    <div id="tasklist-view" class="view-panel">
+      <div class="tasklist-inbox">
+        <div class="inbox-header">
+          <span style="font-weight:600; font-size:0.85rem; color:#fff;"><i class="fa-solid fa-inbox"></i> Open Tasks (1)</span>
+          <span style="font-size:0.72rem; color:var(--tasklist-teal); font-weight:600;">Camunda Tasklist</span>
+        </div>
+        <div id="tasklist-items-container">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+      <div class="tasklist-form-area">
+        <div class="form-card" id="tasklist-form-card">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 4: SPRING BOOT WORKER CONSOLE -->
+    <div id="worker-view" class="view-panel">
+      <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:600; color:#fff;"><i class="fa-solid fa-terminal"></i> Spring Boot External Worker Logs (Zeebe Client)</span>
+        <span style="font-size:0.75rem; color:#4ade80;"><i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> Workers Polling on Port 8081</span>
+      </div>
+      <div class="terminal-box" id="worker-terminal-box">
+        <!-- Log lines injected via JS -->
+      </div>
+    </div>
+  </main>
+
+  <!-- BPMN.js & DMN.js Scripts -->
+  <script src="https://unpkg.com/bpmn-js@17.11.1/dist/bpmn-navigated-viewer.production.min.js"></script>
+  <script src="https://unpkg.com/dmn-js@14.0.0/dist/dmn-decision-table-viewer.production.min.js"></script>
+
+  <script>
+    let currentLab = 'lab1';
+    let currentView = 'modeler';
+    let currentModelerTab = 'bpmn';
+
+    let bpmnViewer = null;
+    let operateViewer = null;
+    let dmnViewer = null;
+
+    let modelsData = {};
+
+    async function loadModels() {
+      try {
+        const res = await fetch('/api/models');
+        modelsData = await res.json();
+        renderCurrentLab();
+      } catch (e) {
+        console.error('Failed to load models:', e);
+      }
+    }
+
+    function switchLab(labKey) {
+      currentLab = labKey;
+      document.querySelectorAll('.lab-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      renderCurrentLab();
+    }
+
+    function switchView(viewKey) {
+      currentView = viewKey;
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+
+      document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(`${viewKey}-view`).classList.add('active');
+
+      if (viewKey === 'operate') {
+        renderOperateView();
+      } else if (viewKey === 'tasklist') {
+        renderTasklistView();
+      } else if (viewKey === 'workers') {
+        renderWorkerLogs();
+      } else if (viewKey === 'modeler') {
+        renderCurrentLab();
+      }
+    }
+
+    function showModelerTab(tab) {
+      currentModelerTab = tab;
+      document.getElementById('btn-subtab-bpmn').classList.toggle('active', tab === 'bpmn');
+      document.getElementById('btn-subtab-dmn').classList.toggle('active', tab === 'dmn');
+
+      document.getElementById('canvas-bpmn').style.display = tab === 'bpmn' ? 'block' : 'none';
+      document.getElementById('canvas-dmn').style.display = tab === 'dmn' ? 'block' : 'none';
+
+      if (tab === 'bpmn') {
+        renderBpmn();
+      } else {
+        renderDmn();
+      }
+    }
+
+    async function renderCurrentLab() {
+      if (!modelsData[currentLab]) return;
+      if (currentModelerTab === 'bpmn') {
+        renderBpmn();
+      } else {
+        renderDmn();
+      }
+      updateSidebarText();
+    }
+
+    async function renderBpmn() {
+      const xml = modelsData[currentLab]?.bpmn;
+      if (!xml) return;
+      if (!bpmnViewer) {
+        bpmnViewer = new BpmnJS({ container: '#canvas-bpmn' });
+      }
+      try {
+        await bpmnViewer.importXML(xml);
+        bpmnViewer.get('canvas').zoom('fit-viewport');
+      } catch (err) {
+        console.error('Error importing BPMN XML:', err);
+      }
+    }
+
+    async function renderDmn() {
+      const xml = modelsData[currentLab]?.dmn;
+      if (!xml) return;
+      if (!dmnViewer) {
+        dmnViewer = new DmnJS({ container: '#canvas-dmn' });
+      }
+      try {
+        await dmnViewer.importXML(xml);
+        const activeView = dmnViewer.getViews()[0];
+        if (activeView) {
+          await dmnViewer.open(activeView);
+        }
+      } catch (err) {
+        console.error('Error importing DMN XML:', err);
+      }
+    }
+
+    function updateSidebarText() {
+      const titles = {
+        lab1: 'Lab 1: Loan Approval Automation',
+        lab2: 'Lab 2: E-Commerce Fulfilment',
+        lab3: 'Lab 3: Hospital Appointment Triage'
+      };
+      const descs = {
+        lab1: 'Camunda 8 BPMN process combining straight-through processing, external Spring Boot workers, DMN decisioning, and credit underwriter Tasklist user tasks.',
+        lab2: 'Camunda 8 order processing pipeline with stock check worker, DMN priority rules, payment gateway REST Connector, and manual risk verification.',
+        lab3: 'Camunda 8 healthcare workflow evaluating patient symptoms via predefined educational DMN rules, scheduling REST Connector, and trauma/waitlist tasks.'
+      };
+      document.getElementById('model-details-title').innerText = titles[currentLab];
+      document.getElementById('model-details-desc').innerText = descs[currentLab];
+    }
+
+    // OPERATE VIEW LOGIC
+    let isIncidentActive = false;
+
+    async function renderOperateView() {
+      const xml = modelsData[currentLab]?.bpmn;
+      if (!xml) return;
+      if (!operateViewer) {
+        operateViewer = new BpmnJS({ container: '#canvas-operate-bpmn' });
+      }
+      try {
+        await operateViewer.importXML(xml);
+        const canvas = operateViewer.get('canvas');
+        canvas.zoom('fit-viewport');
+
+        // Add highlight markers to simulated active token activity
+        const overlays = operateViewer.get('overlays');
+        const activeTasks = {
+          lab1: 'Task_ValidateApplicant',
+          lab2: 'Task_ProcessPaymentGateway',
+          lab3: 'Task_QueryAvailableSlotsRest'
+        };
+        const activeId = activeTasks[currentLab];
+        canvas.addMarker(activeId, isIncidentActive ? 'highlight-incident' : 'highlight-active');
+      } catch (err) {
+        console.error('Operate render error:', err);
+      }
+      renderOperateVariables();
+    }
+
+    function renderOperateVariables() {
+      const tbody = document.getElementById('operate-variables-tbody');
+      tbody.innerHTML = '';
+
+      let vars = [];
+      if (currentLab === 'lab1') {
+        vars = [
+          ['applicantId', '"APP-001"'],
+          ['applicantName', '"Alexander Wright"'],
+          ['requestedAmount', '15000.0'],
+          ['monthlyIncome', isIncidentActive ? '-500.0' : '7500.0'],
+          ['simulateWorkerFailure', isIncidentActive ? 'true' : 'false'],
+          ['isValid', isIncidentActive ? 'false' : 'true'],
+          ['debtToIncomeRatio', isIncidentActive ? '0.0' : '6.0'],
+          ['creditScore', isIncidentActive ? 'null' : '785'],
+          ['dmnDecision', isIncidentActive ? 'null' : '"Approved"']
+        ];
+      } else if (currentLab === 'lab2') {
+        vars = [
+          ['orderId', '"ORD-2026-001"'],
+          ['customerRef', '"CUST-VIP-881"'],
+          ['customerCategory', '"VIP"'],
+          ['productId', '"LAPTOP-X1"'],
+          ['quantity', '2'],
+          ['orderTotal', '2400.0'],
+          ['orderPriority', '"Critical"'],
+          ['paymentToken', isIncidentActive ? '"tok_gateway_timeout_simulate"' : '"tok_visa_valid"'],
+          ['paymentStatus', isIncidentActive ? '"ERROR"' : '"SUCCESS"']
+        ];
+      } else {
+        vars = [
+          ['patientId', '"PAT-SYNTH-101"'],
+          ['patientName', '"Alex Morgan"'],
+          ['urgencyScore', '2'],
+          ['symptomsSeverity', '"MILD"'],
+          ['triageCategory', '"Routine"'],
+          ['appointmentPreference', isIncidentActive ? '"SIMULATE_500"' : '"General Practice"'],
+          ['slotsAvailable', isIncidentActive ? 'false' : 'true'],
+          ['slotCount', isIncidentActive ? '0' : '3']
+        ];
+      }
+
+      vars.forEach(([k, v]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="color:#94a3b8;">${k}</td><td style="color:#f8fafc;">${v}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      const incBox = document.getElementById('operate-incident-box');
+      const badge = document.getElementById('operate-status-badge');
+      if (isIncidentActive) {
+        incBox.style.display = 'block';
+        badge.className = 'status-tag incident';
+        badge.innerText = 'INCIDENT';
+      } else {
+        incBox.style.display = 'none';
+        badge.className = 'status-tag completed';
+        badge.innerText = 'ACTIVE / HEALTHY';
+      }
+    }
+
+    function toggleOperateIncident() {
+      isIncidentActive = !isIncidentActive;
+      renderOperateView();
+    }
+
+    function resolveOperateIncident() {
+      alert('Camunda Operate: Instance variable corrected. Triggered [Retry Incident]. The external worker picked up the job and completed successfully.');
+      isIncidentActive = false;
+      renderOperateView();
+    }
+
+    // TASKLIST VIEW LOGIC
+    function renderTasklistView() {
+      const container = document.getElementById('tasklist-items-container');
+      const formCard = document.getElementById('tasklist-form-card');
+
+      if (currentLab === 'lab1') {
+        container.innerHTML = `
+          <div class="task-item active">
+            <div class="task-item-title">
+              <span>Manual Underwriter Review</span>
+              <span class="status-tag active">URGENT</span>
+            </div>
+            <div class="task-item-meta">Process: Loan Approval System</div>
+            <div class="task-item-meta">Applicant: Alice Walker ($22,000)</div>
+          </div>
+        `;
+        formCard.innerHTML = `
+          <div class="form-header">
+            <h2 style="font-size:1.1rem; color:#fff; margin-bottom:4px;">Manual Credit Underwriter Review</h2>
+            <p style="font-size:0.75rem; color:var(--text-muted);">Application requires underwriter assessment due to borderline DTI / credit rating.</p>
+          </div>
+          <div class="form-field">
+            <label>Applicant Name</label>
+            <input type="text" value="Alice Walker" readonly />
+          </div>
+          <div class="form-field" style="display:flex; gap:12px;">
+            <div style="flex:1;">
+              <label>Requested Amount ($)</label>
+              <input type="text" value="$22,000" readonly />
+            </div>
+            <div style="flex:1;">
+              <label>Monthly Income ($)</label>
+              <input type="text" value="$4,500" readonly />
+            </div>
+          </div>
+          <div class="form-field" style="display:flex; gap:12px;">
+            <div style="flex:1;">
+              <label>Bureau Credit Score</label>
+              <input type="text" value="675 (Fair/Moderate)" readonly />
+            </div>
+            <div style="flex:1;">
+              <label>Computed DTI Ratio</label>
+              <input type="text" value="38.8%" readonly />
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Underwriter Assessment Notes</label>
+            <textarea rows="3" placeholder="Enter reason for approval or adverse action...">Applicant holds 3 years continuous employment tenure with positive employer references. DTI within acceptable discretionary limits.</textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn-reject" onclick="completeTask('Rejected')"><i class="fa-solid fa-xmark"></i> Reject Application</button>
+            <button class="btn-approve" onclick="completeTask('Approved')"><i class="fa-solid fa-check"></i> Approve &amp; Disburse</button>
+          </div>
+        `;
+      } else if (currentLab === 'lab2') {
+        container.innerHTML = `
+          <div class="task-item active">
+            <div class="task-item-title">
+              <span>Manual High-Value Order Verification</span>
+              <span class="status-tag active">HIGH</span>
+            </div>
+            <div class="task-item-meta">Process: E-Commerce Fulfilment</div>
+            <div class="task-item-meta">Order: ORD-2026-004 ($6,600)</div>
+          </div>
+        `;
+        formCard.innerHTML = `
+          <div class="form-header">
+            <h2 style="font-size:1.1rem; color:#fff; margin-bottom:4px;">Manual High-Value Order Verification</h2>
+            <p style="font-size:0.75rem; color:var(--text-muted);">Risk operations check for enterprise orders exceeding $2,000.</p>
+          </div>
+          <div class="form-field">
+            <label>Customer Account</label>
+            <input type="text" value="CUST-NEW-109 (New Account)" readonly />
+          </div>
+          <div class="form-field" style="display:flex; gap:12px;">
+            <div style="flex:1;">
+              <label>Ordered SKU</label>
+              <input type="text" value="WORKSTATION-ULTRA (Qty: 3)" readonly />
+            </div>
+            <div style="flex:1;">
+              <label>Total Value</label>
+              <input type="text" value="$6,600.00" readonly />
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Shipping SLA</label>
+            <input type="text" value="EXPRESS Delivery" readonly />
+          </div>
+          <div class="form-actions">
+            <button class="btn-reject" onclick="completeTask('Cancelled')"><i class="fa-solid fa-ban"></i> Cancel Order</button>
+            <button class="btn-approve" onclick="completeTask('Approved')"><i class="fa-solid fa-check"></i> Approve For Payment</button>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="task-item active">
+            <div class="task-item-title">
+              <span>Priority Staff Clinical Review</span>
+              <span class="status-tag active">YELLOW</span>
+            </div>
+            <div class="task-item-meta">Process: Patient Triage Management</div>
+            <div class="task-item-meta">Patient: David Chen (Acuity: 6)</div>
+          </div>
+        `;
+        formCard.innerHTML = `
+          <div class="form-header">
+            <h2 style="font-size:1.1rem; color:#fff; margin-bottom:4px;">Authorised Staff Clinical Scheduling Review</h2>
+            <p style="font-size:0.75rem; color:var(--text-muted);">Priority nurse review for semi-urgent symptoms (4-hour clinical SLA).</p>
+          </div>
+          <div class="form-field">
+            <label>Patient Reference</label>
+            <input type="text" value="PAT-SYNTH-204 (David Chen)" readonly />
+          </div>
+          <div class="form-field">
+            <label>Symptoms Summary</label>
+            <textarea rows="2" readonly>Persistent right-lower quadrant abdominal pain for 48 hours with mild fever.</textarea>
+          </div>
+          <div class="form-field" style="display:flex; gap:12px;">
+            <div style="flex:1;">
+              <label>Triage Category (DMN)</label>
+              <input type="text" value="Priority Review (Code Yellow)" readonly />
+            </div>
+            <div style="flex:1;">
+              <label>Target SLA</label>
+              <input type="text" value="240 Minutes (4 Hours)" readonly />
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Assign Specialist Slot</label>
+            <select>
+              <option>Tomorrow at 09:30 AM - Dr. Marcus Vance (Gastroenterology)</option>
+              <option>Tomorrow at 02:00 PM - Dr. Sarah Jenkins (Internal Medicine)</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button class="btn-approve" onclick="completeTask('Slot Confirmed')"><i class="fa-solid fa-calendar-check"></i> Confirm Slot &amp; Notify Patient</button>
+          </div>
+        `;
+      }
+    }
+
+    function completeTask(action) {
+      alert(`Camunda Tasklist: Task completed successfully with action [${action}]. Token advanced in BPMN process.`);
+    }
+
+    // WORKER LOGS LOGIC
+    function renderWorkerLogs() {
+      const box = document.getElementById('worker-terminal-box');
+      box.innerHTML = `
+        <div class="log-line log-info">[2026-11-10 14:30:01.102] [main] INFO  c.c.p.Application - Starting Application using Java 24.0.2 with PID 18492</div>
+        <div class="log-line log-info">[2026-11-10 14:30:02.418] [main] INFO  o.s.b.w.e.t.TomcatWebServer - Tomcat started on port 8081 (http) with context path '/'</div>
+        <div class="log-line log-success">[2026-11-10 14:30:03.015] [main] INFO  i.c.z.s.c.ZeebeClientProdAutoConfiguration - Connected to Camunda 8 Zeebe Broker at 127.0.0.1:26500</div>
+        <div class="log-line log-info">[2026-11-10 14:30:03.110] [main] INFO  i.c.z.s.c.JobWorkerManager - Registered JobWorker: [applicant-validator] (threads=8, maxJobs=32)</div>
+        <div class="log-line log-info">[2026-11-10 14:30:03.115] [main] INFO  i.c.z.s.c.JobWorkerManager - Registered JobWorker: [loan-disbursement]</div>
+        <div class="log-line log-info">[2026-11-10 14:30:03.120] [main] INFO  i.c.z.s.c.JobWorkerManager - Registered JobWorker: [order-validator-inventory]</div>
+        <div class="log-line log-info">[2026-11-10 14:30:03.125] [main] INFO  i.c.z.s.c.JobWorkerManager - Registered JobWorker: [fulfilment-dispatcher]</div>
+        <div class="log-line log-info">[2026-11-10 14:30:03.130] [main] INFO  i.c.z.s.c.JobWorkerManager - Registered JobWorker: [patient-registration-validator]</div>
+        <div class="log-line log-info">[2026-11-10 14:30:03.135] [main] INFO  i.c.z.s.c.JobWorkerManager - Registered JobWorker: [appointment-booking-worker]</div>
+        <div class="log-line log-info">[2026-11-10 14:30:03.140] [main] INFO  i.c.z.s.c.JobWorkerManager - Registered JobWorker: [notification-service]</div>
+        <div class="log-line log-info">--------------------------------------------------------------------------------</div>
+        <div class="log-line log-success">[2026-11-10 14:32:10.890] [zeebe-worker-1] INFO  c.c.p.l.LoanWorker - [Lab 1 Worker] Received Job [applicant-validator] - Key: 2251799813685249</div>
+        <div class="log-line log-success">[2026-11-10 14:32:10.895] [zeebe-worker-1] INFO  c.c.p.l.LoanWorker - [Lab 1 Worker] Application APP-001 validation successful. Computed DTI: 6.0%</div>
+        <div class="log-line log-info">[2026-11-10 14:32:11.201] [http-nio-8081-1] INFO  c.c.p.l.MockCreditApiController - [Mock Credit API] Assessment completed for APP-001: Score=785, Tier=EXCELLENT</div>
+        <div class="log-line log-success">[2026-11-10 14:32:12.441] [zeebe-worker-2] INFO  c.c.p.l.LoanWorker - [Lab 1 Worker] Loan disbursed for applicant APP-001. Ref: SANCTION-8A19F0B2</div>
+        <div class="log-line log-info">[2026-11-10 14:32:12.602] [zeebe-worker-3] INFO  c.c.p.l.LoanWorker - [Notification Service] Dispatched notification for job key 2251799813685253 via EMAIL_SMS</div>
+        <div class="log-line log-warn">[2026-11-10 14:34:40.118] [zeebe-worker-4] WARN  c.c.p.l.OrderWorker - [Lab 2 Worker] Order ORD-2026-002: Insufficient stock for SKU GPU-SERVER (Required: 10, Available: 0)</div>
+        <div class="log-line log-error">[2026-11-10 14:36:15.902] [zeebe-worker-5] ERROR c.c.p.l.MockPaymentGatewayController - [Mock Payment Gateway] Simulating HTTP 504 Gateway Timeout for token tok_gateway_timeout_simulate</div>
+        <div class="log-line log-success">[2026-11-10 14:37:02.311] [zeebe-worker-6] INFO  c.c.p.l.HospitalTriageWorker - [Lab 3 Worker] Patient intake validation successful for PAT-SYNTH-101</div>
+        <div class="log-line log-info">[2026-11-10 14:37:02.890] [http-nio-8081-2] INFO  c.c.p.l.MockHospitalSchedulingController - [Mock Scheduling API] Returned 3 available slots for patient PAT-SYNTH-101</div>
+        <div class="log-line log-success">[2026-11-10 14:37:03.415] [zeebe-worker-7] INFO  c.c.p.l.HospitalTriageWorker - [Lab 3 Worker] Appointment confirmed for PAT-SYNTH-101. Ref: APPT-HOSP-C2E81A05</div>
+      `;
+    }
+
+    function handleHash() {
+      const hash = window.location.hash.replace('#', '');
+      if (!hash) return;
+      const parts = hash.split('-');
+      const lab = parts[0];
+      const view = parts[1];
+      const sub = parts[2];
+
+      if (lab && (lab === 'lab1' || lab === 'lab2' || lab === 'lab3')) {
+        currentLab = lab;
+        document.querySelectorAll('.lab-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('onclick')?.includes(lab));
+        });
+      }
+
+      if (view) {
+        currentView = view;
+        document.querySelectorAll('.view-btn').forEach(b => {
+          b.classList.toggle('active', b.classList.contains(view) || b.getAttribute('onclick')?.includes(view));
+        });
+        document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(`${view}-view`).classList.add('active');
+
+        if (view === 'modeler') {
+          showModelerTab(sub === 'dmn' ? 'dmn' : 'bpmn');
+        } else if (view === 'operate') {
+          isIncidentActive = (sub === 'incident');
+          renderOperateView();
+        } else if (view === 'tasklist') {
+          renderTasklistView();
+        } else if (view === 'workers') {
+          renderWorkerLogs();
+        }
+      }
+    }
+
+    window.addEventListener('hashchange', handleHash);
+    window.onload = async () => {
+      await loadModels();
+      handleHash();
+    };
+  </script>
+</body>
+</html>

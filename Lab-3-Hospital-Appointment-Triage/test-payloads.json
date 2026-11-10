@@ -1,0 +1,97 @@
+[
+  {
+    "scenarioId": "LAB3-TC-01",
+    "name": "Routine Request with Available Appointment Slot (Happy Path)",
+    "description": "Patient seeking routine general practice checkup with mild symptoms (urgencyScore=2). DMN evaluates to Routine. Scheduling API returns 3 available slots. Automated booking confirmed.",
+    "inputVariables": {
+      "patientId": "PAT-SYNTH-101",
+      "patientName": "Alex Morgan",
+      "appointmentPreference": "General Practice",
+      "symptomsSummary": "Annual routine physical and preventive blood panel review",
+      "urgencyScore": 2,
+      "symptomsSeverity": "MILD",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_AppointmentRequested -> Task_ValidatePatientRegistration -> Gateway_RegistrationValid (Valid) -> Task_EvaluatePatientTriageDmn -> Gateway_TriageBranch (Routine) -> Task_QueryAvailableSlotsRest -> Gateway_SlotAvailability (Routine Available) -> Task_AutoBookAppointment -> Task_SendAppointmentConfirmation -> EndEvent_AppointmentConfirmed",
+    "expectedDmnTriage": "Routine",
+    "expectedFinalStatus": "Appointment Confirmed & Scheduled",
+    "tasklistIntervention": false,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB3-TC-02",
+    "name": "Request Routed for Priority Staff Review",
+    "description": "Patient presenting with moderate persistent abdominal discomfort (urgencyScore=6). DMN evaluates to Priority Review (4h SLA). Scheduling API returns slots. Routed to Tasklist User Task for clinical staff review.",
+    "inputVariables": {
+      "patientId": "PAT-SYNTH-204",
+      "patientName": "David Chen",
+      "appointmentPreference": "Specialist",
+      "symptomsSummary": "Persistent right-lower quadrant abdominal pain for 48 hours with mild fever",
+      "urgencyScore": 6,
+      "symptomsSeverity": "MODERATE",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_AppointmentRequested -> Task_ValidatePatientRegistration -> Gateway_RegistrationValid (Valid) -> Task_EvaluatePatientTriageDmn -> Gateway_TriageBranch (Standard) -> Task_QueryAvailableSlotsRest -> Gateway_SlotAvailability (Priority Review) -> Task_PriorityStaffReview (Tasklist) [Confirmed] -> Task_SendAppointmentConfirmation -> EndEvent_AppointmentConfirmed",
+    "expectedDmnTriage": "Priority Review",
+    "expectedFinalStatus": "Appointment Confirmed & Scheduled",
+    "tasklistIntervention": true,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB3-TC-03",
+    "name": "Urgent-Assessment Routed to Immediate Human Assessment",
+    "description": "Patient with acute crushing chest pressure and dyspnea (urgencyScore=9, CRITICAL). DMN evaluates to Urgent Assessment (15 min SLA). Bypasses scheduling API; routes immediately to emergency team Tasklist.",
+    "inputVariables": {
+      "patientId": "PAT-SYNTH-309",
+      "patientName": "Evelyn Reed",
+      "appointmentPreference": "Emergency",
+      "symptomsSummary": "Severe crushing retrosternal chest pain radiating to left jaw, diaphoresis, shortness of breath",
+      "urgencyScore": 9,
+      "symptomsSeverity": "CRITICAL",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_AppointmentRequested -> Task_ValidatePatientRegistration -> Gateway_RegistrationValid (Valid) -> Task_EvaluatePatientTriageDmn -> Gateway_TriageBranch (Urgent Assessment) -> Task_ImmediateHumanAssessment (Tasklist Emergency Form) -> EndEvent_EmergencyCareAdmitted",
+    "expectedDmnTriage": "Urgent Assessment",
+    "expectedFinalStatus": "Admitted for Immediate Clinical Intervention",
+    "tasklistIntervention": true,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB3-TC-04",
+    "name": "No Appointment Slots Available (Staff Waitlist Override)",
+    "description": "Patient requesting specialized Radiology MRI consultation. Scheduling API returns zero available slots (capacity 100%). Gateway routes to Tasklist User Task for staff waitlist & slot override.",
+    "inputVariables": {
+      "patientId": "PAT-SYNTH-412",
+      "patientName": "Liam Gallagher",
+      "appointmentPreference": "Radiology MRI",
+      "symptomsSummary": "Chronic lumbar spine disc herniation evaluation",
+      "urgencyScore": 3,
+      "symptomsSeverity": "MILD",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_AppointmentRequested -> Task_ValidatePatientRegistration -> Gateway_RegistrationValid (Valid) -> Task_EvaluatePatientTriageDmn -> Gateway_TriageBranch (Routine) -> Task_QueryAvailableSlotsRest [0 Slots] -> Gateway_SlotAvailability (No Slots) -> Task_StaffSlotOverrideReview (Tasklist) -> EndEvent_Waitlisted",
+    "expectedDmnTriage": "Routine",
+    "expectedFinalStatus": "Patient Placed on Expedited Waitlist",
+    "tasklistIntervention": true,
+    "operateIncident": false
+  },
+  {
+    "scenarioId": "LAB3-TC-05",
+    "name": "Scheduling API Fails and Workflow Recovers",
+    "description": "Scheduling REST API returns HTTP 500 (simulated via appointmentPreference='SIMULATE_500'). Camunda Zeebe records incident in Operate. Operator restarts mock service / retries incident to finish booking.",
+    "inputVariables": {
+      "patientId": "PAT-SYNTH-525",
+      "patientName": "Sophia Taylor",
+      "appointmentPreference": "SIMULATE_500",
+      "symptomsSummary": "Cardiovascular consultation follow-up",
+      "urgencyScore": 4,
+      "symptomsSeverity": "MILD",
+      "simulateWorkerFailure": false
+    },
+    "expectedRoute": "StartEvent_AppointmentRequested -> Task_ValidatePatientRegistration -> Gateway_RegistrationValid -> Task_EvaluatePatientTriageDmn -> Task_QueryAvailableSlotsRest [INCIDENT: HTTP 500 Service Error] -> Operate Diagnostic -> Service Restored / Retried -> EndEvent_AppointmentConfirmed",
+    "expectedDmnTriage": "Routine",
+    "expectedFinalStatus": "Appointment Confirmed & Scheduled (Recovered)",
+    "tasklistIntervention": false,
+    "operateIncident": true
+  }
+]
