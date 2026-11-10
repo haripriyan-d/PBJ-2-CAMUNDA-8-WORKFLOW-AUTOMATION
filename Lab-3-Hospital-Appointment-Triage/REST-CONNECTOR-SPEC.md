@@ -1,25 +1,36 @@
 # REST Connector Specification - Lab 3: Mock Hospital Scheduling API
 
 ## 1. Overview
-The hospital appointment workflow delegates slot availability discovery to the **Camunda 8 Out-of-the-Box REST Connector (`io.camunda:http-json:1`)**. The connector connects to the Hospital Electronic Health Record (EHR) Scheduling API, query available slots for the patient's preferred clinical specialty, and provides slot availability metrics to downstream BPMN routing gateways.
+The hospital appointment workflow delegates slot availability discovery to the **Camunda 8 Out-of-the-Box REST Outbound Connector (`io.camunda:http-json:1` with template `io.camunda.connectors.HttpJson.v1`)**. The connector connects to the Hospital Electronic Health Record (EHR) Scheduling API, queries available slots for the patient's preferred clinical specialty, and provides slot availability metrics to downstream BPMN routing gateways.
 
 ---
 
 ## 2. Camunda 8 Connector Configuration
 
-### Task Definition
-- **Type**: `io.camunda:http-json:1`
+### Task Definition & Modeler Template
+- **Modeler Template**: `io.camunda.connectors.HttpJson.v1` (Camunda 8 REST Outbound Connector)
+- **Modeler Version**: `1`
+- **Job Worker Type**: `io.camunda:http-json:1`
 - **Retries**: `3`
 - **Activity ID**: `Task_QueryAvailableSlotsRest`
-- **Activity Name**: `Retrieve Available Slots from Scheduling REST API`
+- **Activity Name**: `Retrieve Available Slots (REST Outbound Connector)`
+
+### Task Headers
+| Header Key | Header Value | Description |
+| :--- | :--- | :--- |
+| `resultVariable` | `response` | Ingests scheduling slots and physician info |
+| `errorExpression` | `""` | Propagates HTTP 500 into Zeebe Incident |
+| `resultExpression` | `""` | Result extraction |
 
 ### Input Mappings
 | Property Key | Type | Camunda 8 FEEL Expression | Description |
 | :--- | :--- | :--- | :--- |
-| `method` | String | `"POST"` | HTTP invocation method |
+| `method` | String | `"post"` | HTTP method |
 | `url` | String | `"http://localhost:8081/api/v1/scheduling/available-slots"` | Scheduling service URL |
 | `headers` | Map | `{"Content-Type": "application/json", "Accept": "application/json"}` | Standard JSON headers |
 | `body` | Context/FEEL | `={ patientId: patientId, appointmentPreference: appointmentPreference, triageCategory: triageCategory }` | Query payload containing clinical preference and triage band |
+| `connectionTimeoutInSeconds` | Number | `20` | Timeout in seconds |
+| `authentication.type` | String | `"noAuth"` | EHR authentication scheme |
 
 ### Output Mappings
 | Target Variable | Source Expression (FEEL) | Purpose |

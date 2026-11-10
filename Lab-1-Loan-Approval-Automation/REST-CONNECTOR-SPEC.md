@@ -1,25 +1,36 @@
 # REST Connector Specification - Lab 1: Credit Assessment API
 
 ## 1. Overview
-The **Camunda 8 Out-of-the-Box REST Connector (`io.camunda:http-json:1`)** is configured within `loan-approval-process.bpmn` to invoke a credit assessment microservice endpoint. This enables asynchronous retrieval of creditworthiness scores, risk tiers, and bureau tracking references without requiring custom Java networking code inside the core orchestration layer.
+The **Camunda 8 Out-of-the-Box REST Outbound Connector (`io.camunda:http-json:1` with template `io.camunda.connectors.HttpJson.v1`)** is configured within `loan-approval-process.bpmn` to invoke a credit assessment microservice endpoint. This enables asynchronous retrieval of creditworthiness scores, risk tiers, and bureau tracking references without requiring custom Java networking code inside the core orchestration layer.
 
 ---
 
 ## 2. Camunda 8 Connector Configuration
 
-### Task Definition
-- **Type**: `io.camunda:http-json:1`
+### Task Definition & Modeler Template
+- **Modeler Template**: `io.camunda.connectors.HttpJson.v1` (Camunda 8 REST Outbound Connector)
+- **Modeler Version**: `1`
+- **Job Worker Type**: `io.camunda:http-json:1`
 - **Retries**: `3`
 - **Activity ID**: `Task_CreditAssessment`
-- **Activity Name**: `Call Credit Assessment REST API`
+- **Activity Name**: `Call Credit Assessment REST API (REST Outbound Connector)`
+
+### Task Headers
+| Header Key | Header Value | Description |
+| :--- | :--- | :--- |
+| `resultVariable` | `response` | Stores HTTP response context into process scope |
+| `errorExpression` | `""` | Evaluates business errors into BPMN Error Events |
+| `resultExpression` | `""` | Optional post-processing transformation expression |
 
 ### Input Mappings
 | Property Key | Type | Camunda 8 FEEL Expression | Description |
 | :--- | :--- | :--- | :--- |
-| `method` | String | `"POST"` | HTTP invocation method |
+| `method` | String | `"post"` | HTTP invocation method (lowercase/uppercase supported) |
 | `url` | String | `"http://localhost:8081/api/v1/credit-assessment"` | Mock Credit Assessment REST endpoint |
 | `headers` | Map | `{"Content-Type": "application/json", "Accept": "application/json"}` | Standard JSON payload headers |
 | `body` | Context/FEEL | `={ applicantId: applicantId, requestedAmount: requestedAmount, monthlyIncome: monthlyIncome }` | Dynamic request payload constructed from process variables |
+| `connectionTimeoutInSeconds` | Number | `20` | Maximum network timeout before throwing incident |
+| `authentication.type` | String | `"noAuth"` | Authentication mode (noAuth, basic, bearer, custom) |
 
 ### Output Mappings
 | Target Variable | Source Expression (FEEL) | Purpose |

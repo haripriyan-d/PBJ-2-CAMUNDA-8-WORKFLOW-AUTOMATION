@@ -77,14 +77,24 @@ LAB1_BPMN = """<?xml version="1.0" encoding="UTF-8"?>
       <bpmn:outgoing>Flow_Val_Invalid</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <!-- Service Task 2: Camunda 8 REST Connector -->
-    <bpmn:serviceTask id="Task_CreditAssessment" name="Call Credit Assessment REST API">
+    <!-- REST Outbound Connector: Camunda 8 HTTP JSON (io.camunda.connectors.HttpJson.v1) -->
+    <bpmn:serviceTask id="Task_CreditAssessment" name="Call Credit Assessment REST API (REST Outbound Connector)"
+                      zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v1"
+                      zeebe:modelerTemplateVersion="1"
+                      zeebe:modelerTemplateIcon="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20fill%3D%22none%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20stroke%3D%22currentColor%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M2%209h14M11%204l5%205-5%205%22%2F%3E%3C%2Fsvg%3E">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3" />
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="response" />
+          <zeebe:header key="errorExpression" value="" />
+          <zeebe:header key="resultExpression" value="" />
+        </zeebe:taskHeaders>
         <zeebe:ioMapping>
-          <zeebe:input source="POST" target="method" />
           <zeebe:input source="http://localhost:8081/api/v1/credit-assessment" target="url" />
+          <zeebe:input source="post" target="method" />
           <zeebe:input source="={applicantId: applicantId, requestedAmount: requestedAmount, monthlyIncome: monthlyIncome}" target="body" />
+          <zeebe:input source="20" target="connectionTimeoutInSeconds" />
+          <zeebe:input source="noAuth" target="authentication.type" />
           <zeebe:output source="=response.body.creditScore" target="creditScore" />
           <zeebe:output source="=response.body.creditTier" target="creditTier" />
           <zeebe:output source="=response.body.assessmentStatus" target="assessmentStatus" />
@@ -586,14 +596,24 @@ LAB2_BPMN = """<?xml version="1.0" encoding="UTF-8"?>
       <bpmn:outgoing>Flow_Verif_Reject</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <!-- Service Task 2: REST Connector calling Payment Gateway -->
-    <bpmn:serviceTask id="Task_ProcessPaymentGateway" name="Invoke Payment Gateway REST Connector">
+    <!-- REST Outbound Connector: Camunda 8 HTTP JSON (io.camunda.connectors.HttpJson.v1) -->
+    <bpmn:serviceTask id="Task_ProcessPaymentGateway" name="Invoke Payment Gateway (REST Outbound Connector)"
+                      zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v1"
+                      zeebe:modelerTemplateVersion="1"
+                      zeebe:modelerTemplateIcon="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20fill%3D%22none%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20stroke%3D%22currentColor%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M2%209h14M11%204l5%205-5%205%22%2F%3E%3C%2Fsvg%3E">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3" />
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="response" />
+          <zeebe:header key="errorExpression" value="" />
+          <zeebe:header key="resultExpression" value="" />
+        </zeebe:taskHeaders>
         <zeebe:ioMapping>
-          <zeebe:input source="POST" target="method" />
           <zeebe:input source="http://localhost:8081/api/v1/payments/process" target="url" />
+          <zeebe:input source="post" target="method" />
           <zeebe:input source="={orderId: orderId, customerRef: customerRef, amount: orderTotal, paymentToken: paymentToken}" target="body" />
+          <zeebe:input source="20" target="connectionTimeoutInSeconds" />
+          <zeebe:input source="noAuth" target="authentication.type" />
           <zeebe:output source="=response.body.paymentStatus" target="paymentStatus" />
           <zeebe:output source="=response.body.transactionId" target="transactionId" />
           <zeebe:output source="=response.body.authCode" target="authCode" />
@@ -1074,14 +1094,24 @@ LAB3_BPMN = """<?xml version="1.0" encoding="UTF-8"?>
       <bpmn:incoming>Flow_Urgent_To_Admitted</bpmn:incoming>
     </bpmn:endEvent>
 
-    <!-- Service Task 2: REST Connector calling Mock Hospital Scheduling API -->
-    <bpmn:serviceTask id="Task_QueryAvailableSlotsRest" name="Retrieve Available Slots from Scheduling REST API">
+    <!-- REST Outbound Connector: Camunda 8 HTTP JSON (io.camunda.connectors.HttpJson.v1) -->
+    <bpmn:serviceTask id="Task_QueryAvailableSlotsRest" name="Retrieve Available Slots (REST Outbound Connector)"
+                      zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v1"
+                      zeebe:modelerTemplateVersion="1"
+                      zeebe:modelerTemplateIcon="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20fill%3D%22none%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20stroke%3D%22currentColor%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M2%209h14M11%204l5%205-5%205%22%2F%3E%3C%2Fsvg%3E">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3" />
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="response" />
+          <zeebe:header key="errorExpression" value="" />
+          <zeebe:header key="resultExpression" value="" />
+        </zeebe:taskHeaders>
         <zeebe:ioMapping>
-          <zeebe:input source="POST" target="method" />
           <zeebe:input source="http://localhost:8081/api/v1/scheduling/available-slots" target="url" />
+          <zeebe:input source="post" target="method" />
           <zeebe:input source="={patientId: patientId, appointmentPreference: appointmentPreference, triageCategory: triageCategory}" target="body" />
+          <zeebe:input source="20" target="connectionTimeoutInSeconds" />
+          <zeebe:input source="noAuth" target="authentication.type" />
           <zeebe:output source="=response.body.slotsAvailable" target="slotsAvailable" />
           <zeebe:output source="=response.body.slotCount" target="slotCount" />
           <zeebe:output source="=response.body.availableSlots" target="availableSlots" />

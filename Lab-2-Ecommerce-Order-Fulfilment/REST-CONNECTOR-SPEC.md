@@ -1,25 +1,36 @@
 # REST Connector Specification - Lab 2: Payment Gateway REST API
 
 ## 1. Overview
-In `ecommerce-order-process.bpmn`, payment execution is delegated to the **Camunda 8 Out-of-the-Box REST Connector (`io.camunda:http-json:1`)**. This connector submits order payment credentials and transaction totals to a simulated acquirer payment service, consuming JSON responses and propagating status codes to downstream BPMN routing gateways.
+In `ecommerce-order-process.bpmn`, payment execution is delegated to the **Camunda 8 Out-of-the-Box REST Outbound Connector (`io.camunda:http-json:1` with template `io.camunda.connectors.HttpJson.v1`)**. This connector submits order payment credentials and transaction totals to a simulated acquirer payment service, consuming JSON responses and propagating status codes to downstream BPMN routing gateways.
 
 ---
 
 ## 2. Camunda 8 Connector Configuration
 
-### Task Definition
-- **Type**: `io.camunda:http-json:1`
+### Task Definition & Modeler Template
+- **Modeler Template**: `io.camunda.connectors.HttpJson.v1` (Camunda 8 REST Outbound Connector)
+- **Modeler Version**: `1`
+- **Job Worker Type**: `io.camunda:http-json:1`
 - **Retries**: `3`
 - **Activity ID**: `Task_ProcessPaymentGateway`
-- **Activity Name**: `Invoke Payment Gateway REST Connector`
+- **Activity Name**: `Invoke Payment Gateway (REST Outbound Connector)`
+
+### Task Headers
+| Header Key | Header Value | Description |
+| :--- | :--- | :--- |
+| `resultVariable` | `response` | Ingests full HTTP response object into workflow variables |
+| `errorExpression` | `""` | Evaluates HTTP status code into Zeebe Error Events |
+| `resultExpression` | `""` | Result extraction expression |
 
 ### Input Mappings
 | Property Key | Type | Camunda 8 FEEL Expression | Description |
 | :--- | :--- | :--- | :--- |
-| `method` | String | `"POST"` | HTTP invocation method |
+| `method` | String | `"post"` | HTTP verb |
 | `url` | String | `"http://localhost:8081/api/v1/payments/process"` | Payment Gateway endpoint |
 | `headers` | Map | `{"Content-Type": "application/json", "Accept": "application/json"}` | Request headers |
 | `body` | Context/FEEL | `={ orderId: orderId, customerRef: customerRef, amount: orderTotal, paymentToken: paymentToken }` | Dynamic request payload constructed from order variables |
+| `connectionTimeoutInSeconds` | Number | `20` | Timeout threshold |
+| `authentication.type` | String | `"noAuth"` | Acquirer authentication method |
 
 ### Output Mappings
 | Target Variable | Source Expression (FEEL) | Purpose |

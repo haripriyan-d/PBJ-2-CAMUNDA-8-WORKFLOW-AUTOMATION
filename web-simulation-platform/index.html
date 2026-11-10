@@ -509,6 +509,7 @@
         <div style="margin-top:auto;">
           <h4 style="font-size:0.78rem; margin-bottom:6px; color:#fff;">Execution Metadata</h4>
           <p style="font-size:0.72rem; color:var(--text-muted); font-family:'JetBrains Mono';">Engine: Zeebe 8.5.3</p>
+          <p style="font-size:0.72rem; color:var(--text-muted); font-family:'JetBrains Mono';">REST Connector: io.camunda.connectors.HttpJson.v1</p>
           <p style="font-size:0.72rem; color:var(--text-muted); font-family:'JetBrains Mono';">Tenant: &lt;default&gt;</p>
           <p style="font-size:0.72rem; color:var(--text-muted); font-family:'JetBrains Mono';">State: Deployed &amp; Executable</p>
         </div>
@@ -702,9 +703,9 @@
         lab3: 'Lab 3: Hospital Appointment Triage'
       };
       const descs = {
-        lab1: 'Camunda 8 BPMN process combining straight-through processing, external Spring Boot workers, DMN decisioning, and credit underwriter Tasklist user tasks.',
-        lab2: 'Camunda 8 order processing pipeline with stock check worker, DMN priority rules, payment gateway REST Connector, and manual risk verification.',
-        lab3: 'Camunda 8 healthcare workflow evaluating patient symptoms via predefined educational DMN rules, scheduling REST Connector, and trauma/waitlist tasks.'
+        lab1: 'Camunda 8 BPMN process combining straight-through processing, external Spring Boot workers, DMN decisioning, credit underwriter Tasklist human tasks, and official REST Outbound Connector (io.camunda.connectors.HttpJson.v1).',
+        lab2: 'Camunda 8 order processing pipeline with stock check worker, DMN priority rules, Payment Gateway REST Outbound Connector (io.camunda.connectors.HttpJson.v1), and manual risk verification.',
+        lab3: 'Camunda 8 healthcare workflow evaluating patient symptoms via predefined educational DMN rules, Hospital Scheduling REST Outbound Connector (io.camunda.connectors.HttpJson.v1), and trauma/waitlist tasks.'
       };
       document.getElementById('model-details-title').innerText = titles[currentLab];
       document.getElementById('model-details-desc').innerText = descs[currentLab];

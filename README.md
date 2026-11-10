@@ -18,7 +18,7 @@ This repository contains the complete, production-grade implementation of the **
 | **BPMN Model Files & Diagrams** | ✅ Complete | [Lab 1 BPMN](Lab-1-Loan-Approval-Automation/loan-approval-process.bpmn), [Lab 2 BPMN](Lab-2-Ecommerce-Order-Fulfilment/ecommerce-order-process.bpmn), [Lab 3 BPMN](Lab-3-Hospital-Appointment-Triage/hospital-appointment-process.bpmn) |
 | **DMN Decision Tables & Rules** | ✅ Complete | [Lab 1 DMN](Lab-1-Loan-Approval-Automation/loan-approval-rules.dmn), [Lab 2 DMN](Lab-2-Ecommerce-Order-Fulfilment/order-priority-rules.dmn), [Lab 3 DMN](Lab-3-Hospital-Appointment-Triage/patient-triage-rules.dmn) |
 | **Spring Boot External Job Workers** | ✅ Complete | [`spring-boot-workers`](spring-boot-workers/) with `@JobWorker` annotations and setup guide |
-| **REST Connector Config & Examples** | ✅ Complete | Documented in `REST-CONNECTOR-SPEC.md` across all labs with curl/HTTP examples |
+| **REST Outbound Connector Config & Examples** | ✅ Complete | Official `io.camunda.connectors.HttpJson.v1` templates in `REST-CONNECTOR-SPEC.md` across all labs with curl/HTTP examples |
 | **Process-Variable Dictionary** | ✅ Complete | Documented in `PROCESS-VARIABLES.md` across all labs with types, origins, and scopes |
 | **15 Comprehensive Test Cases** | ✅ Complete | [`test_all_scenarios.py`](test_all_scenarios.py) and `test-payloads.json` in each lab |
 | **Model Deployment & Execution** | ✅ Complete | Validated Camunda 8 XML with full BPMNDI/DMNDI layout coordinates |
