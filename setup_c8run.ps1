@@ -5,6 +5,7 @@ param (
 )
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 if ([string]::IsNullOrWhiteSpace($TargetDir)) {
@@ -40,40 +41,65 @@ try {
     Write-Host "[2/4] Found asset: $($asset.name) ($fileSizeMB MB)" -ForegroundColor Green
     Write-Host "      Download URL: $downloadUrl" -ForegroundColor Gray
 
-    Write-Host "[3/4] Downloading Camunda 8 Run package (this may take a minute)..." -ForegroundColor Yellow
-    $webClient = New-Object System.Net.WebClient
-    $webClient.Headers.Add("User-Agent", "PowerShell-CamundaInstaller")
-    $webClient.DownloadFile($downloadUrl, $zipFile)
-    Write-Host "      Download complete!" -ForegroundColor Green
+    Write-Host "[3/4] Downloading Camunda 8 Run package..." -ForegroundColor Yellow
+
+    # Prefer curl.exe with auto-resume (-C -) and progress bar (-#)
+    $hasCurl = (Get-Command curl.exe -ErrorAction SilentlyContinue)
+    if ($hasCurl) {
+        Write-Host "      Using curl.exe (with download resume support)..." -ForegroundColor Cyan
+        & curl.exe -C - -# -L "$downloadUrl" -o "$zipFile"
+        if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 33) {
+            # Exit code 33 is HTTP range error if already complete
+            Write-Warning "curl exited with code $LASTEXITCODE. Retrying cleanly..."
+            & curl.exe -# -L "$downloadUrl" -o "$zipFile"
+        }
+    } else {
+        Write-Host "      Using .NET WebClient..." -ForegroundColor Cyan
+        $webClient = New-Object System.Net.WebClient
+        $webClient.Headers.Add("User-Agent", "PowerShell-CamundaInstaller")
+        $webClient.DownloadFile($downloadUrl, $zipFile)
+    }
+
+    Write-Host "      Download verified successfully!" -ForegroundColor Green
 
     Write-Host "[4/4] Extracting archive into $destFolder..." -ForegroundColor Yellow
     if (Test-Path $destFolder) {
         Remove-Item -Path $destFolder -Recurse -Force -ErrorAction SilentlyContinue
     }
     New-Item -ItemType Directory -Path $destFolder -Force | Out-Null
-    Expand-Archive -Path $zipFile -DestinationPath $destFolder -Force
+
+    # Prefer tar.exe for instant extraction without PowerShell Archive bug
+    $hasTar = (Get-Command tar.exe -ErrorAction SilentlyContinue)
+    if ($hasTar) {
+        Write-Host "      Extracting via tar.exe (fast unpack)..." -ForegroundColor Cyan
+        & tar.exe -xf "$zipFile" -C "$destFolder"
+    } else {
+        Write-Host "      Extracting via Expand-Archive..." -ForegroundColor Cyan
+        Expand-Archive -Path "$zipFile" -DestinationPath "$destFolder" -Force
+    }
 
     # Clean up temporary zip
     if (Test-Path $zipFile) {
-        Remove-Item -Path $zipFile -Force
+        Remove-Item -Path $zipFile -Force -ErrorAction SilentlyContinue
     }
 
-    # Locate c8run.exe (might be in subfolder after extraction)
+    # Locate c8run.exe
     $foundExe = Get-ChildItem -Path $destFolder -Filter "c8run.exe" -Recurse | Select-Object -First 1
     if ($foundExe) {
-        # Copy or link to root if desirable, or keep inside c8run/
         Write-Host ""
-        Write-Host "SUCCESS: Camunda 8 Run is installed and ready at:" -ForegroundColor Green
-        Write-Host "  $($foundExe.FullName)" -ForegroundColor White
+        Write-Host "===============================================================================" -ForegroundColor Green
+        Write-Host " SUCCESS: Camunda 8 Run is installed and ready at:" -ForegroundColor Green
+        Write-Host "   $($foundExe.FullName)" -ForegroundColor White
+        Write-Host "===============================================================================" -ForegroundColor Green
         Write-Host ""
-        Write-Host "You can now start Camunda 8 by pressing 1 in run_c8_local.bat!" -ForegroundColor Cyan
+        Write-Host " You can now start Camunda 8 locally by pressing [1] in run_c8_local.bat!" -ForegroundColor Cyan
     } else {
-        Write-Warning "Archive extracted, but c8run.exe was not directly found. Please verify files inside $destFolder."
+        Write-Warning "Archive extracted, but c8run.exe was not found. Check contents of $destFolder."
     }
 }
 catch {
     Write-Host ""
-    Write-Host "Automatic download encountered an error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Automatic setup encountered an error: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host ""
     Write-Host "Manual Installation fallback instructions:" -ForegroundColor Yellow
     Write-Host " 1. Go to: https://github.com/camunda/camunda/releases/latest" -ForegroundColor White
