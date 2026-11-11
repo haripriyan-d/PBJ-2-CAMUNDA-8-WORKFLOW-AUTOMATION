@@ -24,68 +24,84 @@ Write-Host ""
 $destFolder = Join-Path $TargetDir "c8run"
 $zipFile = Join-Path $TargetDir "c8run.zip"
 
+# Known direct stable release fallback URL (bypasses GitHub API rate limits)
+$fallbackUrl = "https://github.com/camunda/camunda/releases/download/8.10.9/camunda8-run-8.10.9-windows-x86_64.zip"
+$downloadUrl = $fallbackUrl
+$versionName = "8.10.9"
+
 try {
-    Write-Host "[1/4] Checking latest Camunda 8 releases from GitHub API..." -ForegroundColor Yellow
-    $apiUrl = "https://api.github.com/repos/camunda/camunda/releases/latest"
-    $headers = @{ "User-Agent" = "PowerShell-CamundaInstaller" }
-    
-    $release = Invoke-RestMethod -Uri $apiUrl -Headers $headers -TimeoutSec 30
-    $asset = $release.assets | Where-Object { $_.name -like "camunda8-run*windows-x86_64.zip" -or ($_.name -like "*run*windows*.zip") } | Select-Object -First 1
-
-    if (-not $asset) {
-        throw "Could not find a Windows x86_64 zip asset in release $($release.tag_name)."
-    }
-
-    $downloadUrl = $asset.browser_download_url
-    $fileSizeMB = [math]::Round($asset.size / 1MB, 2)
-    Write-Host "[2/4] Found asset: $($asset.name) ($fileSizeMB MB)" -ForegroundColor Green
-    Write-Host "      Download URL: $downloadUrl" -ForegroundColor Gray
-
-    Write-Host "[3/4] Downloading Camunda 8 Run package..." -ForegroundColor Yellow
-
-    # Prefer curl.exe with auto-resume (-C -) and progress bar (-#)
-    $hasCurl = (Get-Command curl.exe -ErrorAction SilentlyContinue)
-    if ($hasCurl) {
-        Write-Host "      Using curl.exe (with download resume support)..." -ForegroundColor Cyan
-        & curl.exe -C - -# -L "$downloadUrl" -o "$zipFile"
-        if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 33) {
-            # Exit code 33 is HTTP range error if already complete
-            Write-Warning "curl exited with code $LASTEXITCODE. Retrying cleanly..."
-            & curl.exe -# -L "$downloadUrl" -o "$zipFile"
+    Write-Host "[1/4] Resolving Camunda 8 Run Windows distribution..." -ForegroundColor Yellow
+    try {
+        $apiUrl = "https://api.github.com/repos/camunda/camunda/releases/latest"
+        $headers = @{ "User-Agent" = "PowerShell-CamundaInstaller" }
+        $release = Invoke-RestMethod -Uri $apiUrl -Headers $headers -TimeoutSec 10 -ErrorAction Stop
+        $asset = $release.assets | Where-Object { $_.name -like "camunda8-run*windows-x86_64.zip" } | Select-Object -First 1
+        if ($asset) {
+            $downloadUrl = $asset.browser_download_url
+            $versionName = $release.tag_name
+            Write-Host "      Found latest release: $versionName" -ForegroundColor Green
         }
-    } else {
-        Write-Host "      Using .NET WebClient..." -ForegroundColor Cyan
-        $webClient = New-Object System.Net.WebClient
-        $webClient.Headers.Add("User-Agent", "PowerShell-CamundaInstaller")
-        $webClient.DownloadFile($downloadUrl, $zipFile)
+    } catch {
+        Write-Host "      GitHub API rate-limited or unavailable; using direct release: $versionName" -ForegroundColor Cyan
     }
 
-    Write-Host "      Download verified successfully!" -ForegroundColor Green
+    Write-Host "[2/4] Target asset: camunda8-run-$versionName-windows-x86_64.zip" -ForegroundColor Green
+    Write-Host "      Source: $downloadUrl" -ForegroundColor Gray
 
-    Write-Host "[4/4] Extracting archive into $destFolder..." -ForegroundColor Yellow
+    # Clean existing partial files
+    if (Test-Path $zipFile) {
+        Remove-Item -Path $zipFile -Force -ErrorAction SilentlyContinue
+    }
     if (Test-Path $destFolder) {
         Remove-Item -Path $destFolder -Recurse -Force -ErrorAction SilentlyContinue
     }
     New-Item -ItemType Directory -Path $destFolder -Force | Out-Null
 
-    # Prefer tar.exe for instant extraction without PowerShell Archive bug
-    $hasTar = (Get-Command tar.exe -ErrorAction SilentlyContinue)
-    if ($hasTar) {
-        Write-Host "      Extracting via tar.exe (fast unpack)..." -ForegroundColor Cyan
-        & tar.exe -xf "$zipFile" -C "$destFolder"
+    Write-Host "[3/4] Downloading Camunda 8 Run package (~885 MB)..." -ForegroundColor Yellow
+    Write-Host "      (Please wait a moment while the package downloads)" -ForegroundColor Gray
+
+    $hasCurl = (Get-Command curl.exe -ErrorAction SilentlyContinue)
+    if ($hasCurl) {
+        Write-Host "      Downloading via curl.exe..." -ForegroundColor Cyan
+        & curl.exe -# -fSL "$downloadUrl" -o "$zipFile"
+        if ($LASTEXITCODE -ne 0) {
+            throw "curl.exe exited with code $LASTEXITCODE"
+        }
     } else {
-        Write-Host "      Extracting via Expand-Archive..." -ForegroundColor Cyan
-        Expand-Archive -Path "$zipFile" -DestinationPath "$destFolder" -Force
+        Write-Host "      Downloading via WebClient..." -ForegroundColor Cyan
+        $webClient = New-Object System.Net.WebClient
+        $webClient.Headers.Add("User-Agent", "PowerShell-CamundaInstaller")
+        $webClient.DownloadFile($downloadUrl, $zipFile)
     }
 
-    # Clean up temporary zip
-    if (Test-Path $zipFile) {
-        Remove-Item -Path $zipFile -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path $zipFile) -or (Get-Item $zipFile).Length -lt 10000000) {
+        throw "Downloaded package is missing or smaller than 10MB."
+    }
+
+    $downloadedMB = [math]::Round((Get-Item $zipFile).Length / 1MB, 2)
+    Write-Host "      Downloaded $downloadedMB MB successfully!" -ForegroundColor Green
+
+    Write-Host "[4/4] Extracting package into $destFolder..." -ForegroundColor Yellow
+
+    # Extract using Expand-Archive with SilentlyContinue
+    $extracted = $false
+    try {
+        Write-Host "      Extracting files (this takes approx. 1-2 minutes)..." -ForegroundColor Cyan
+        Expand-Archive -Path "$zipFile" -DestinationPath "$destFolder" -Force
+        $extracted = $true
+    } catch {
+        Write-Warning "Expand-Archive failed: $($_.Exception.Message). Trying tar.exe..."
+        & tar.exe -xf "$zipFile" -C "$destFolder"
+        if ($LASTEXITCODE -eq 0) { $extracted = $true }
     }
 
     # Locate c8run.exe
     $foundExe = Get-ChildItem -Path $destFolder -Filter "c8run.exe" -Recurse | Select-Object -First 1
+
     if ($foundExe) {
+        # Clean up temporary zip
+        Remove-Item -Path $zipFile -Force -ErrorAction SilentlyContinue
+
         Write-Host ""
         Write-Host "===============================================================================" -ForegroundColor Green
         Write-Host " SUCCESS: Camunda 8 Run is installed and ready at:" -ForegroundColor Green
@@ -102,8 +118,8 @@ catch {
     Write-Host "Automatic setup encountered an error: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host ""
     Write-Host "Manual Installation fallback instructions:" -ForegroundColor Yellow
-    Write-Host " 1. Go to: https://github.com/camunda/camunda/releases/latest" -ForegroundColor White
-    Write-Host " 2. Download: camunda8-run-*-windows-x86_64.zip" -ForegroundColor White
+    Write-Host " 1. Go to: $fallbackUrl" -ForegroundColor White
+    Write-Host " 2. Save the zip file to: $TargetDir\c8run.zip" -ForegroundColor White
     Write-Host " 3. Extract the contents into a folder named 'c8run' inside this repository." -ForegroundColor White
     Write-Host " 4. Run run_c8_local.bat again." -ForegroundColor White
 }
