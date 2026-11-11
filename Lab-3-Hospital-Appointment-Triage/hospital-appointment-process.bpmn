@@ -1,22 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
-                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                  id="Definitions_HospitalTriage"
-                  targetNamespace="http://bpmn.io/schema/bpmn"
-                  exporter="Camunda Modeler"
-                  exporterVersion="5.28.0">
-
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_HospitalTriage" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.50.1">
   <bpmn:collaboration id="Collaboration_HospitalAppointment">
-    <bpmn:participant id="Participant_HospitalPlatform" name="Camunda 8 Hospital Appointment &amp; Patient Triage Platform" processRef="Process_HospitalTriage" />
+    <bpmn:participant id="Participant_HospitalPlatform" name="Camunda 8 Hospital Appointment &#38; Patient Triage Platform" processRef="Process_HospitalTriage" />
   </bpmn:collaboration>
-
   <bpmn:process id="Process_HospitalTriage" name="Hospital Appointment and Patient Triage Management" isExecutable="true">
     <bpmn:laneSet id="LaneSet_Hospital">
-      <bpmn:lane id="Lane_AutomatedTriage" name="Automated Registration, Triage &amp; Scheduling Engine">
+      <bpmn:lane id="Lane_AutomatedTriage" name="Automated Registration, Triage &#38; Scheduling Engine">
         <bpmn:flowNodeRef>StartEvent_AppointmentRequested</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_ValidatePatientRegistration</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_RegistrationValid</bpmn:flowNodeRef>
@@ -30,7 +19,7 @@
         <bpmn:flowNodeRef>Task_NotifyInvalidRegistration</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_RegistrationRejected</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="Lane_ClinicalStaff" name="Authorised Clinical Staff &amp; Emergency Team (Tasklist)">
+      <bpmn:lane id="Lane_ClinicalStaff" name="Authorised Clinical Staff &#38; Emergency Team (Tasklist)">
         <bpmn:flowNodeRef>Task_ImmediateHumanAssessment</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_EmergencyCareAdmitted</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_PriorityStaffReview</bpmn:flowNodeRef>
@@ -38,14 +27,10 @@
         <bpmn:flowNodeRef>EndEvent_Waitlisted</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
-
-    <!-- Start Event -->
     <bpmn:startEvent id="StartEvent_AppointmentRequested" name="Appointment Request Submitted">
       <bpmn:outgoing>Flow_Start_To_ValidateReg</bpmn:outgoing>
     </bpmn:startEvent>
-
-    <!-- Service Task 1: External Java Worker -->
-    <bpmn:serviceTask id="Task_ValidatePatientRegistration" name="Validate Registration &amp; Symptoms Payload">
+    <bpmn:serviceTask id="Task_ValidatePatientRegistration" name="Validate Registration &#38; Symptoms Payload">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="patient-registration-validator" retries="3" />
         <zeebe:ioMapping>
@@ -60,15 +45,11 @@
       <bpmn:incoming>Flow_Start_To_ValidateReg</bpmn:incoming>
       <bpmn:outgoing>Flow_ValidateReg_To_Gateway</bpmn:outgoing>
     </bpmn:serviceTask>
-
-    <!-- Exclusive Gateway: Registration Validity -->
     <bpmn:exclusiveGateway id="Gateway_RegistrationValid" name="Registration Valid?" default="Flow_Reg_Valid">
       <bpmn:incoming>Flow_ValidateReg_To_Gateway</bpmn:incoming>
       <bpmn:outgoing>Flow_Reg_Valid</bpmn:outgoing>
       <bpmn:outgoing>Flow_Reg_Invalid</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-
-    <!-- Business Rule Task: Camunda 8 DMN -->
     <bpmn:businessRuleTask id="Task_EvaluatePatientTriageDmn" name="Evaluate Predefined Clinical Triage (DMN)">
       <bpmn:extensionElements>
         <zeebe:calledDecision decisionId="Decision_PatientTriage" resultVariable="triageOutcome" />
@@ -81,15 +62,11 @@
       <bpmn:incoming>Flow_Reg_Valid</bpmn:incoming>
       <bpmn:outgoing>Flow_TriageDmn_To_Gateway</bpmn:outgoing>
     </bpmn:businessRuleTask>
-
-    <!-- Exclusive Gateway: Triage Category Routing -->
     <bpmn:exclusiveGateway id="Gateway_TriageBranch" name="Triage Classification?" default="Flow_Branch_Standard">
       <bpmn:incoming>Flow_TriageDmn_To_Gateway</bpmn:incoming>
       <bpmn:outgoing>Flow_Branch_Urgent</bpmn:outgoing>
       <bpmn:outgoing>Flow_Branch_Standard</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-
-    <!-- Tasklist User Task: Immediate Human Assessment for Urgent Cases -->
     <bpmn:userTask id="Task_ImmediateHumanAssessment" name="Immediate Emergency Human Assessment">
       <bpmn:extensionElements>
         <zeebe:formDefinition formId="Form_UrgentTriage" />
@@ -98,16 +75,10 @@
       <bpmn:incoming>Flow_Branch_Urgent</bpmn:incoming>
       <bpmn:outgoing>Flow_Urgent_To_Admitted</bpmn:outgoing>
     </bpmn:userTask>
-
     <bpmn:endEvent id="EndEvent_EmergencyCareAdmitted" name="Admitted for Immediate Clinical Intervention">
       <bpmn:incoming>Flow_Urgent_To_Admitted</bpmn:incoming>
     </bpmn:endEvent>
-
-    <!-- REST Outbound Connector: Camunda 8 HTTP JSON (io.camunda.connectors.HttpJson.v1) -->
-    <bpmn:serviceTask id="Task_QueryAvailableSlotsRest" name="Retrieve Available Slots (REST Outbound Connector)"
-                      zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v1"
-                      zeebe:modelerTemplateVersion="1"
-                      zeebe:modelerTemplateIcon="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20fill%3D%22none%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20stroke%3D%22currentColor%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M2%209h14M11%204l5%205-5%205%22%2F%3E%3C%2Fsvg%3E">
+    <bpmn:serviceTask id="Task_QueryAvailableSlotsRest" name="Retrieve Available Slots (REST Outbound Connector)" zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v1" zeebe:modelerTemplateVersion="1" zeebe:modelerTemplateIcon="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20fill%3D%22none%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20stroke%3D%22currentColor%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M2%209h14M11%204l5%205-5%205%22%2F%3E%3C%2Fsvg%3E">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3" />
         <zeebe:taskHeaders>
@@ -130,16 +101,12 @@
       <bpmn:incoming>Flow_Branch_Standard</bpmn:incoming>
       <bpmn:outgoing>Flow_Scheduling_To_Gateway</bpmn:outgoing>
     </bpmn:serviceTask>
-
-    <!-- Exclusive Gateway: Slot Availability & Priority Check -->
-    <bpmn:exclusiveGateway id="Gateway_SlotAvailability" name="Evaluate Slots &amp; Triage" default="Flow_Slot_AutoBook">
+    <bpmn:exclusiveGateway id="Gateway_SlotAvailability" name="Evaluate Slots &#38; Triage" default="Flow_Slot_AutoBook">
       <bpmn:incoming>Flow_Scheduling_To_Gateway</bpmn:incoming>
       <bpmn:outgoing>Flow_Slot_None</bpmn:outgoing>
       <bpmn:outgoing>Flow_Slot_PriorityReview</bpmn:outgoing>
       <bpmn:outgoing>Flow_Slot_AutoBook</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-
-    <!-- Tasklist User Task: Priority Staff Review -->
     <bpmn:userTask id="Task_PriorityStaffReview" name="Priority Staff Clinical Scheduling Review">
       <bpmn:extensionElements>
         <zeebe:formDefinition formId="Form_PriorityStaffReview" />
@@ -148,9 +115,7 @@
       <bpmn:incoming>Flow_Slot_PriorityReview</bpmn:incoming>
       <bpmn:outgoing>Flow_PriorityReview_To_Confirm</bpmn:outgoing>
     </bpmn:userTask>
-
-    <!-- Tasklist User Task: No Slots Available - Staff Slot Override -->
-    <bpmn:userTask id="Task_StaffSlotOverrideReview" name="Authorised Staff Review: Slot Override &amp; Waitlist">
+    <bpmn:userTask id="Task_StaffSlotOverrideReview" name="Authorised Staff Review: Slot Override &#38; Waitlist">
       <bpmn:extensionElements>
         <zeebe:formDefinition formId="Form_WaitlistOverride" />
         <zeebe:assignmentDefinition candidateGroups="clinical-scheduling" />
@@ -158,12 +123,9 @@
       <bpmn:incoming>Flow_Slot_None</bpmn:incoming>
       <bpmn:outgoing>Flow_Override_To_Waitlist</bpmn:outgoing>
     </bpmn:userTask>
-
     <bpmn:endEvent id="EndEvent_Waitlisted" name="Patient Placed on Expedited Waitlist">
       <bpmn:incoming>Flow_Override_To_Waitlist</bpmn:incoming>
     </bpmn:endEvent>
-
-    <!-- Automated Booking Path -->
     <bpmn:serviceTask id="Task_AutoBookAppointment" name="Execute Automated Slot Booking">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="appointment-booking-worker" retries="3" />
@@ -171,7 +133,6 @@
       <bpmn:incoming>Flow_Slot_AutoBook</bpmn:incoming>
       <bpmn:outgoing>Flow_AutoBook_To_Confirm</bpmn:outgoing>
     </bpmn:serviceTask>
-
     <bpmn:sendTask id="Task_SendAppointmentConfirmation" name="Send Appointment Confirmation">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="notification-service" retries="3" />
@@ -180,12 +141,9 @@
       <bpmn:incoming>Flow_PriorityReview_To_Confirm</bpmn:incoming>
       <bpmn:outgoing>Flow_Confirm_To_End</bpmn:outgoing>
     </bpmn:sendTask>
-
-    <bpmn:endEvent id="EndEvent_AppointmentConfirmed" name="Appointment Confirmed &amp; Scheduled">
+    <bpmn:endEvent id="EndEvent_AppointmentConfirmed" name="Appointment Confirmed &#38; Scheduled">
       <bpmn:incoming>Flow_Confirm_To_End</bpmn:incoming>
     </bpmn:endEvent>
-
-    <!-- Invalid Registration Path -->
     <bpmn:sendTask id="Task_NotifyInvalidRegistration" name="Notify Registration Correction Needed">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="notification-service" retries="3" />
@@ -193,12 +151,9 @@
       <bpmn:incoming>Flow_Reg_Invalid</bpmn:incoming>
       <bpmn:outgoing>Flow_RegFail_To_End</bpmn:outgoing>
     </bpmn:sendTask>
-
     <bpmn:endEvent id="EndEvent_RegistrationRejected" name="Registration Terminated">
       <bpmn:incoming>Flow_RegFail_To_End</bpmn:incoming>
     </bpmn:endEvent>
-
-    <!-- Sequence Flows -->
     <bpmn:sequenceFlow id="Flow_Start_To_ValidateReg" sourceRef="StartEvent_AppointmentRequested" targetRef="Task_ValidatePatientRegistration" />
     <bpmn:sequenceFlow id="Flow_ValidateReg_To_Gateway" sourceRef="Task_ValidatePatientRegistration" targetRef="Gateway_RegistrationValid" />
     <bpmn:sequenceFlow id="Flow_Reg_Valid" name="Valid" sourceRef="Gateway_RegistrationValid" targetRef="Task_EvaluatePatientTriageDmn" />
@@ -224,116 +179,93 @@
     <bpmn:sequenceFlow id="Flow_Slot_AutoBook" name="Routine Available" sourceRef="Gateway_SlotAvailability" targetRef="Task_AutoBookAppointment" />
     <bpmn:sequenceFlow id="Flow_AutoBook_To_Confirm" sourceRef="Task_AutoBookAppointment" targetRef="Task_SendAppointmentConfirmation" />
     <bpmn:sequenceFlow id="Flow_Confirm_To_End" sourceRef="Task_SendAppointmentConfirmation" targetRef="EndEvent_AppointmentConfirmed" />
-
   </bpmn:process>
-
-  <!-- BPMNDI Layout Coordinates -->
   <bpmndi:BPMNDiagram id="BPMNDiagram_Hospital">
     <bpmndi:BPMNPlane id="BPMNPlane_Hospital" bpmnElement="Collaboration_HospitalAppointment">
       <bpmndi:BPMNShape id="Shape_Participant_HospitalPlatform" bpmnElement="Participant_HospitalPlatform" isHorizontal="true">
         <dc:Bounds x="160" y="80" width="1440" height="490" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Lane_AutomatedTriage" bpmnElement="Lane_AutomatedTriage" isHorizontal="true">
-        <dc:Bounds x="190" y="80" width="1410" height="280" />
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Lane_ClinicalStaff" bpmnElement="Lane_ClinicalStaff" isHorizontal="true">
         <dc:Bounds x="190" y="360" width="1410" height="210" />
       </bpmndi:BPMNShape>
-
-      <!-- Nodes -->
+      <bpmndi:BPMNShape id="Shape_Lane_AutomatedTriage" bpmnElement="Lane_AutomatedTriage" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1410" height="280" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_StartEvent_AppointmentRequested" bpmnElement="StartEvent_AppointmentRequested">
         <dc:Bounds x="232" y="162" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="210" y="205" width="81" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_ValidatePatientRegistration" bpmnElement="Task_ValidatePatientRegistration">
         <dc:Bounds x="320" y="140" width="130" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_RegistrationValid" bpmnElement="Gateway_RegistrationValid" isMarkerVisible="true">
         <dc:Bounds x="495" y="155" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="480" y="125" width="81" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_EvaluatePatientTriageDmn" bpmnElement="Task_EvaluatePatientTriageDmn">
         <dc:Bounds x="590" y="140" width="130" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_TriageBranch" bpmnElement="Gateway_TriageBranch" isMarkerVisible="true">
         <dc:Bounds x="765" y="155" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="750" y="125" width="81" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_ImmediateHumanAssessment" bpmnElement="Task_ImmediateHumanAssessment">
         <dc:Bounds x="725" y="420" width="130" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_EndEvent_EmergencyCareAdmitted" bpmnElement="EndEvent_EmergencyCareAdmitted">
         <dc:Bounds x="902" y="442" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="878" y="485" width="84" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_QueryAvailableSlotsRest" bpmnElement="Task_QueryAvailableSlotsRest">
         <dc:Bounds x="870" y="140" width="140" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_SlotAvailability" bpmnElement="Gateway_SlotAvailability" isMarkerVisible="true">
         <dc:Bounds x="1055" y="155" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1040" y="125" width="81" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_PriorityStaffReview" bpmnElement="Task_PriorityStaffReview">
         <dc:Bounds x="1015" y="420" width="130" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_StaffSlotOverrideReview" bpmnElement="Task_StaffSlotOverrideReview">
         <dc:Bounds x="1175" y="420" width="130" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_EndEvent_Waitlisted" bpmnElement="EndEvent_Waitlisted">
         <dc:Bounds x="1352" y="442" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1330" y="485" width="81" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_AutoBookAppointment" bpmnElement="Task_AutoBookAppointment">
         <dc:Bounds x="1160" y="140" width="120" height="70" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_SendAppointmentConfirmation" bpmnElement="Task_SendAppointmentConfirmation">
         <dc:Bounds x="1320" y="140" width="120" height="70" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_EndEvent_AppointmentConfirmed" bpmnElement="EndEvent_AppointmentConfirmed">
         <dc:Bounds x="1482" y="157" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1460" y="200" width="81" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_NotifyInvalidRegistration" bpmnElement="Task_NotifyInvalidRegistration">
         <dc:Bounds x="460" y="260" width="120" height="60" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_EndEvent_RegistrationRejected" bpmnElement="EndEvent_RegistrationRejected">
         <dc:Bounds x="632" y="272" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="611" y="315" width="79" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
-      <!-- Edges -->
       <bpmndi:BPMNEdge id="Edge_Flow_Start_To_ValidateReg" bpmnElement="Flow_Start_To_ValidateReg">
         <di:waypoint x="268" y="180" />
         <di:waypoint x="320" y="180" />
@@ -361,6 +293,9 @@
       <bpmndi:BPMNEdge id="Edge_Flow_Branch_Urgent" bpmnElement="Flow_Branch_Urgent">
         <di:waypoint x="790" y="205" />
         <di:waypoint x="790" y="420" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="810" y="311" width="60" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_Urgent_To_Admitted" bpmnElement="Flow_Urgent_To_Admitted">
         <di:waypoint x="855" y="460" />
@@ -369,6 +304,9 @@
       <bpmndi:BPMNEdge id="Edge_Flow_Branch_Standard" bpmnElement="Flow_Branch_Standard">
         <di:waypoint x="815" y="180" />
         <di:waypoint x="870" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="789" y="155" width="82" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_Scheduling_To_Gateway" bpmnElement="Flow_Scheduling_To_Gateway">
         <di:waypoint x="1010" y="180" />
@@ -379,6 +317,9 @@
         <di:waypoint x="1080" y="380" />
         <di:waypoint x="1240" y="380" />
         <di:waypoint x="1240" y="420" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1115" y="363" width="90" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_Override_To_Waitlist" bpmnElement="Flow_Override_To_Waitlist">
         <di:waypoint x="1305" y="460" />
@@ -387,11 +328,15 @@
       <bpmndi:BPMNEdge id="Edge_Flow_Slot_PriorityReview" bpmnElement="Flow_Slot_PriorityReview">
         <di:waypoint x="1080" y="205" />
         <di:waypoint x="1080" y="420" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1083" y="303" width="74" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_PriorityReview_To_Confirm" bpmnElement="Flow_PriorityReview_To_Confirm">
-        <di:waypoint x="1145" y="460" />
-        <di:waypoint x="1380" y="460" />
-        <di:waypoint x="1380" y="210" />
+        <di:waypoint x="1080" y="500" />
+        <di:waypoint x="1080" y="540" />
+        <di:waypoint x="1430" y="540" />
+        <di:waypoint x="1430" y="220" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_Slot_AutoBook" bpmnElement="Flow_Slot_AutoBook">
         <di:waypoint x="1105" y="180" />

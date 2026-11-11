@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
-             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
-             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
-             id="Definitions_PatientTriageRules"
-             name="Hospital Patient Triage Decision Rules"
-             namespace="http://camunda.org/schema/1.0/dmn"
-             exporter="Camunda Modeler"
-             exporterVersion="5.28.0">
-
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" id="Definitions_PatientTriageRules" name="Hospital Patient Triage Decision Rules" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="5.50.1">
   <decision id="Decision_PatientTriage" name="Educational Clinical Patient Triage Classification">
     <decisionTable id="DecisionTable_Triage" hitPolicy="FIRST">
       <input id="Input_UrgencyScore" label="Clinical Urgency Score (1-10)">
@@ -23,58 +15,97 @@
       <output id="Output_TriageCategory" label="Triage Classification" name="triageCategory" typeRef="string" />
       <output id="Output_TargetResponse" label="Target Response Window (Minutes)" name="targetResponseMinutes" typeRef="number" />
       <output id="Output_ClinicalProtocol" label="Clinical Protocol" name="clinicalProtocol" typeRef="string" />
-
-      <!-- Rule 1: Urgency Score >= 8 -> Urgent Assessment -->
       <rule id="Rule_EmergencyScore">
-        <inputEntry id="Entry_T1_1"><text>&gt;= 8</text></inputEntry>
-        <inputEntry id="Entry_T1_2"><text>-</text></inputEntry>
-        <outputEntry id="Out_T1_1"><text>"Urgent Assessment"</text></outputEntry>
-        <outputEntry id="Out_T1_2"><text>15</text></outputEntry>
-        <outputEntry id="Out_T1_3"><text>"Code Red: Immediate emergency human triage and resuscitation bay allocation"</text></outputEntry>
+        <inputEntry id="Entry_T1_1">
+          <text>&gt;= 8</text>
+        </inputEntry>
+        <inputEntry id="Entry_T1_2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="Out_T1_1">
+          <text>"Urgent Assessment"</text>
+        </outputEntry>
+        <outputEntry id="Out_T1_2">
+          <text>15</text>
+        </outputEntry>
+        <outputEntry id="Out_T1_3">
+          <text>"Code Red: Immediate emergency human triage and resuscitation bay allocation"</text>
+        </outputEntry>
       </rule>
-
-      <!-- Rule 2: Critical Symptoms Severity -> Urgent Assessment -->
       <rule id="Rule_CriticalSymptoms">
-        <inputEntry id="Entry_T2_1"><text>-</text></inputEntry>
-        <inputEntry id="Entry_T2_2"><text>"CRITICAL", "ACUTE"</text></inputEntry>
-        <outputEntry id="Out_T2_1"><text>"Urgent Assessment"</text></outputEntry>
-        <outputEntry id="Out_T2_2"><text>15</text></outputEntry>
-        <outputEntry id="Out_T2_3"><text>"Code Red: Acute symptom profile requires direct senior clinician assessment"</text></outputEntry>
+        <inputEntry id="Entry_T2_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="Entry_T2_2">
+          <text>"CRITICAL", "ACUTE"</text>
+        </inputEntry>
+        <outputEntry id="Out_T2_1">
+          <text>"Urgent Assessment"</text>
+        </outputEntry>
+        <outputEntry id="Out_T2_2">
+          <text>15</text>
+        </outputEntry>
+        <outputEntry id="Out_T2_3">
+          <text>"Code Red: Acute symptom profile requires direct senior clinician assessment"</text>
+        </outputEntry>
       </rule>
-
-      <!-- Rule 3: Urgency Score 5 to 7 -> Priority Review -->
       <rule id="Rule_PriorityReview">
-        <inputEntry id="Entry_T3_1"><text>[5..7]</text></inputEntry>
-        <inputEntry id="Entry_T3_2"><text>-</text></inputEntry>
-        <outputEntry id="Out_T3_1"><text>"Priority Review"</text></outputEntry>
-        <outputEntry id="Out_T3_2"><text>240</text></outputEntry>
-        <outputEntry id="Out_T3_3"><text>"Code Yellow: Priority nursing chart review and expedited slot allocation within 4h"</text></outputEntry>
+        <inputEntry id="Entry_T3_1">
+          <text>[5..7]</text>
+        </inputEntry>
+        <inputEntry id="Entry_T3_2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="Out_T3_1">
+          <text>"Priority Review"</text>
+        </outputEntry>
+        <outputEntry id="Out_T3_2">
+          <text>240</text>
+        </outputEntry>
+        <outputEntry id="Out_T3_3">
+          <text>"Code Yellow: Priority nursing chart review and expedited slot allocation within 4h"</text>
+        </outputEntry>
       </rule>
-
-      <!-- Rule 4: Moderate Symptoms Severity -> Priority Review -->
       <rule id="Rule_ModerateSymptoms">
-        <inputEntry id="Entry_T4_1"><text>-</text></inputEntry>
-        <inputEntry id="Entry_T4_2"><text>"MODERATE"</text></inputEntry>
-        <outputEntry id="Out_T4_1"><text>"Priority Review"</text></outputEntry>
-        <outputEntry id="Out_T4_2"><text>240</text></outputEntry>
-        <outputEntry id="Out_T4_3"><text>"Code Yellow: Semi-urgent clinical condition requires same-day specialist slot"</text></outputEntry>
+        <inputEntry id="Entry_T4_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="Entry_T4_2">
+          <text>"MODERATE"</text>
+        </inputEntry>
+        <outputEntry id="Out_T4_1">
+          <text>"Priority Review"</text>
+        </outputEntry>
+        <outputEntry id="Out_T4_2">
+          <text>240</text>
+        </outputEntry>
+        <outputEntry id="Out_T4_3">
+          <text>"Code Yellow: Semi-urgent clinical condition requires same-day specialist slot"</text>
+        </outputEntry>
       </rule>
-
-      <!-- Rule 5: Fallthrough Catch-all -> Routine -->
       <rule id="Rule_RoutineCatchall">
-        <inputEntry id="Entry_T5_1"><text>-</text></inputEntry>
-        <inputEntry id="Entry_T5_2"><text>-</text></inputEntry>
-        <outputEntry id="Out_T5_1"><text>"Routine"</text></outputEntry>
-        <outputEntry id="Out_T5_2"><text>2880</text></outputEntry>
-        <outputEntry id="Out_T5_3"><text>"Code Green: Routine outpatient consultation queue within 48 hours"</text></outputEntry>
+        <inputEntry id="Entry_T5_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="Entry_T5_2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="Out_T5_1">
+          <text>"Routine"</text>
+        </outputEntry>
+        <outputEntry id="Out_T5_2">
+          <text>2880</text>
+        </outputEntry>
+        <outputEntry id="Out_T5_3">
+          <text>"Code Green: Routine outpatient consultation queue within 48 hours"</text>
+        </outputEntry>
       </rule>
     </decisionTable>
   </decision>
-
   <dmndi:DMNDI>
     <dmndi:DMNDiagram id="DMNDiagram_Triage">
       <dmndi:DMNShape id="DMNShape_Decision_PatientTriage" dmnElementRef="Decision_PatientTriage">
-        <dc:Bounds x="160" y="100" width="220" height="80" />
+        <dc:Bounds height="80" width="220" x="160" y="100" />
       </dmndi:DMNShape>
     </dmndi:DMNDiagram>
   </dmndi:DMNDI>

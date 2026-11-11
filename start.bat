@@ -10,9 +10,10 @@ echo [1] Launch Web Simulation, Modeler & Monitoring Platform (Port 8080)
 echo [2] Run Comprehensive Test Suite (15 Scenarios Across Labs 1, 2, 3)
 echo [3] Run Spring Boot External Job Workers & Mock REST APIs (Port 8081)
 echo [4] Recapture All Screenshots from Live Implementation
-echo [5] Exit
+echo [5] Launch Camunda 8 Local Stack (c8run Zeebe / Operate / Tasklist)
+echo [6] Exit
 echo.
-set /p opt="Choose an option (1-5): "
+set /p opt="Choose an option (1-6): "
 
 if "%opt%"=="1" (
     echo Starting Web Server...
@@ -34,5 +35,8 @@ if "%opt%"=="4" (
     pause
 )
 if "%opt%"=="5" (
+    call run_c8_local.bat
+)
+if "%opt%"=="6" (
     exit
 )
