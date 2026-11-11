@@ -15,17 +15,21 @@ if defined JAVA_HOME (
     )
 )
 
-:: -----------------------------------------------------------------------------
-:: Locate c8run executable
-:: -----------------------------------------------------------------------------
+:DETECT_EXE
 set "C8_EXE="
 if exist "%~dp0c8run.exe" (
     set "C8_EXE=%~dp0c8run.exe"
 ) else if exist "%~dp0c8run\c8run.exe" (
     set "C8_EXE=%~dp0c8run\c8run.exe"
 ) else (
-    for %%X in (c8run.exe) do (
-        if not "%%~$PATH:X"=="" set "C8_EXE=%%~$PATH:X"
+    :: Look recursively in c8run subfolders if extracted into nested folder
+    for /r "%~dp0c8run" %%F in (c8run.exe) do (
+        if exist "%%F" set "C8_EXE=%%F"
+    )
+    if not defined C8_EXE (
+        for %%X in (c8run.exe) do (
+            if not "%%~$PATH:X"=="" set "C8_EXE=%%~$PATH:X"
+        )
     )
 )
 
@@ -38,7 +42,7 @@ echo.
 if defined C8_EXE (
     echo  [STATUS] c8run detected at: !C8_EXE!
 ) else (
-    echo  [STATUS] c8run NOT yet downloaded in this folder. (Option 5 to auto-download)
+    echo  [STATUS] c8run NOT yet detected. (Choose Option 5 to auto-download)
 )
 echo.
 echo  =============================== MENU OPTIONS ================================
@@ -77,13 +81,9 @@ echo                     STARTING CAMUNDA 8 LOCAL (C8RUN)
 echo ===============================================================================
 echo.
 if not defined C8_EXE (
-    echo c8run was not found. Launching auto-downloader first...
+    echo c8run executable was not found. Launching auto-downloader...
     call :DOWNLOAD_C8
-    if not defined C8_EXE (
-        echo Could not locate c8run.exe after download.
-        pause
-        goto MENU
-    )
+    goto DETECT_EXE
 )
 
 echo Starting Camunda 8 cluster in background...
@@ -156,7 +156,7 @@ timeout /t 2 >nul
 goto MENU
 
 :: -----------------------------------------------------------------------------
-:: 5. Download & Setup c8run
+:: 5. Download & Setup c8run via dedicated script
 :: -----------------------------------------------------------------------------
 :DOWNLOAD_C8
 cls
@@ -164,33 +164,18 @@ echo ===========================================================================
 echo             AUTO-DOWNLOADING CAMUNDA 8 RUN (C8RUN) FOR WINDOWS
 echo ===============================================================================
 echo.
-echo Fetching latest Camunda 8 Run distribution via PowerShell...
-powershell -Command ^
-  "$ProgressPreference = 'SilentlyContinue';" ^
-  "Write-Host 'Querying latest Camunda 8 Run release on GitHub...';" ^
-  "$apiUrl = 'https://api.github.com/repos/camunda/camunda/releases/latest';" ^
-  "try {" ^
-  "  $release = Invoke-RestMethod -Uri $apiUrl -Headers @{'User-Agent'='PowerShell'};" ^
-  "  $asset = $release.assets | Where-Object { $_.name -like '*run*windows*x86_64.zip' -or $_.name -like '*run*.zip' } | Select-Object -First 1;" ^
-  "  if (-not $asset) { throw 'Asset not found in release.' }" ^
-  "  $zipPath = Join-Path $pwd 'c8run.zip';" ^
-  "  Write-Host ('Downloading ' + $asset.name + ' (' + [math]::Round($asset.size/1MB,1) + ' MB)...');" ^
-  "  Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath;" ^
-  "  Write-Host 'Extracting archive...';" ^
-  "  Expand-Archive -Path $zipPath -DestinationPath (Join-Path $pwd 'c8run') -Force;" ^
-  "  Remove-Item $zipPath -Force;" ^
-  "  Write-Host 'Downloaded and extracted successfully!' -ForegroundColor Green;" ^
-  "} catch {" ^
-  "  Write-Host ('Automatic download failed: ' + $_.Exception.Message) -ForegroundColor Yellow;" ^
-  "  Write-Host 'You can manually download camunda8-run for Windows from: https://camunda.com/download/' -ForegroundColor Cyan;" ^
-  "}"
-
-if exist "%~dp0c8run\c8run.exe" (
-    set "C8_EXE=%~dp0c8run\c8run.exe"
-) else if exist "%~dp0c8run.exe" (
-    set "C8_EXE=%~dp0c8run.exe"
-)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup_c8run.ps1"
 echo.
+:: Re-detect executable after download
+if exist "%~dp0c8run.exe" (
+    set "C8_EXE=%~dp0c8run.exe"
+) else if exist "%~dp0c8run\c8run.exe" (
+    set "C8_EXE=%~dp0c8run\c8run.exe"
+) else (
+    for /r "%~dp0c8run" %%F in (c8run.exe) do (
+        if exist "%%F" set "C8_EXE=%%F"
+    )
+)
 pause
 goto MENU
 
@@ -199,7 +184,7 @@ goto MENU
 :: -----------------------------------------------------------------------------
 :START_WORKERS
 cls
-echo Starting Spring Boot External Job Workers & Mock REST APIs on port 8081...
+echo Starting Spring Boot External Job Workers ^& Mock REST APIs on port 8081...
 cd "%~dp0spring-boot-workers"
 call mvn clean spring-boot:run
 cd "%~dp0"

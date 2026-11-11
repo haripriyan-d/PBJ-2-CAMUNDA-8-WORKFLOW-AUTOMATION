@@ -10,6 +10,8 @@
 *.war
 *.nar
 *.ear
+# Camunda 8 local distribution
+c8run/
 *.zip
 *.tar.gz
 *.rar
